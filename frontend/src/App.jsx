@@ -1,27 +1,57 @@
+import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
-import AddTransaction from "./pages/AddTransaction";
+import SidebarPanel from "./pages/SidebarPanel";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import { CategoriesProvider } from "./context/CategoriesContext";
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem("token");
+
+  return token ? children : <Navigate to="/login" />;
+}
+
+function Home() {
+  return (
+    <div className="app-bg min-h-screen text-slate-900 dark:text-zinc-100">
+      <main className="mx-auto max-w-7xl px-6 py-8">
+        <Dashboard />
+
+        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Transactions />
+          </div>
+
+          <div className="lg:col-span-1">
+            <SidebarPanel />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-gray-100 antialiased">
-      <header className="border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-4 px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">💼</span>
-            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-              Expense Tracker
-            </span>
-          </div>
-        </div>
-      </header>
+    <CategoriesProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-      <main className="py-6 space-y-10">
-        <Dashboard />
-        <Transactions />
-        <AddTransaction />
-      </main>
-    </div>
+        <Route path="/register" element={<Register />} />
+
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </CategoriesProvider>
   );
 }
 

@@ -1,53 +1,64 @@
-export default function SummaryCard({ title, amount, type }) {
-  let bgStyles = "";
-  let textStyles = "";
-  let icon = "";
-
-  if (type === "income") {
-    bgStyles = "bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border-emerald-500/20";
-    textStyles = "text-emerald-600 dark:text-emerald-400";
-    icon = (
-      <svg className="w-8 h-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-      </svg>
-    );
-  } else if (type === "expense") {
-    bgStyles = "bg-gradient-to-br from-rose-500/10 to-pink-500/5 border-rose-500/20";
-    textStyles = "text-rose-600 dark:text-rose-400";
-    icon = (
-      <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6" />
-      </svg>
-    );
-  } else {
-    bgStyles = amount >= 0 
-      ? "bg-gradient-to-br from-violet-500/10 to-indigo-500/5 border-violet-500/20" 
-      : "bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-500/20";
-    textStyles = amount >= 0 ? "text-violet-600 dark:text-violet-400" : "text-amber-600 dark:text-amber-400";
-    icon = (
-      <svg className="w-8 h-8 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    );
-  }
-
-  const formattedAmount = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD'
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
   }).format(amount);
 
+const config = {
+  income: {
+    accent: "border-l-emerald-500",
+    iconBg: "bg-emerald-500/10",
+    iconColor: "text-emerald-500",
+    amountColor: "text-emerald-600 dark:text-emerald-400",
+    icon: (
+      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+      </svg>
+    ),
+  },
+  expense: {
+    accent: "border-l-rose-500",
+    iconBg: "bg-rose-500/10",
+    iconColor: "text-rose-500",
+    amountColor: "text-rose-600 dark:text-rose-400",
+    icon: (
+      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+      </svg>
+    ),
+  },
+  balance: {
+    accent: "border-l-indigo-500",
+    iconBg: "bg-indigo-500/10",
+    iconColor: "text-indigo-500",
+    amountColor: "text-indigo-600 dark:text-indigo-400",
+    icon: (
+      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    ),
+  },
+};
+
+export default function SummaryCard({ title, amount, type }) {
+  const cfg = config[type] || config.balance;
+  const isNegativeBalance = type === "balance" && amount < 0;
+
   return (
-    <div className={`p-6 bg-white dark:bg-zinc-900 border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-between ${bgStyles}`}>
-      <div>
-        <span className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">
-          {title}
-        </span>
-        <span className={`text-2xl font-bold tracking-tight ${textStyles}`}>
-          {formattedAmount}
-        </span>
-      </div>
-      <div className="p-3 bg-white/80 dark:bg-zinc-800/80 rounded-xl shadow-sm">
-        {icon}
+    <div
+      className={`dashboard-card border-l-4 ${isNegativeBalance ? "border-l-amber-500" : cfg.accent} p-6 hover:-translate-y-1`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <p className="section-label">{title}</p>
+          <p className={`text-3xl font-extrabold tracking-tight ${isNegativeBalance ? "text-amber-600 dark:text-amber-400" : cfg.amountColor}`}>
+            {formatCurrency(amount)}
+          </p>
+        </div>
+        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${cfg.iconBg} ${cfg.iconColor} shadow-inner`}>
+          {cfg.icon}
+        </div>
       </div>
     </div>
   );

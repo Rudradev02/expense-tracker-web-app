@@ -1,17 +1,19 @@
 from flask import Blueprint, request, jsonify
 from config import db
 from models import Transaction
+from utils.auth import token_required
 
 transaction_bp = Blueprint("transaction_bp", __name__)
 
 
-# GET all transactions with optional search and category filter
+# GET all transactions
 @transaction_bp.route("/transactions", methods=["GET"])
-def get_transactions():
+@token_required
+def get_transactions(current_user_id):
     title = request.args.get("title")
     category = request.args.get("category")
 
-    query = Transaction.query
+    query = Transaction.query.filter_by(user_id=current_user_id)
 
     if title:
         query = query.filter(Transaction.title.ilike(f"%{title}%"))
@@ -19,45 +21,32 @@ def get_transactions():
     if category:
         query = query.filter(Transaction.category.ilike(f"%{category}%"))
 
-    transactions = query.all()
+    transactions = query.order_by(Transaction.date.desc()).all()
 
-    return jsonify([
-        {
-            "id": t.id,
-            "title": t.title,
-            "amount": t.amount,
-            "category": t.category,
-            "type": t.type,
-            "date": t.date.strftime("%Y-%m-%d %H:%M:%S")
-        }
-        for t in transactions
-    ])
+    return jsonify([t.to_dict() for t in transactions])
 
 
 # GET transaction by ID
 @transaction_bp.route("/transactions/<int:id>", methods=["GET"])
-def get_transaction(id):
-    transaction = Transaction.query.get(id)
+@token_required
+def get_transaction(current_user_id, id):
+    transaction = Transaction.query.filter_by(
+        id=id,
+        user_id=current_user_id
+    ).first()
 
     if not transaction:
         return jsonify({"error": "Transaction not found"}), 404
 
-    return jsonify({
-        "id": transaction.id,
-        "title": transaction.title,
-        "amount": transaction.amount,
-        "category": transaction.category,
-        "type": transaction.type,
-        "date": transaction.date.strftime("%Y-%m-%d %H:%M:%S")
-    })
+    return jsonify(transaction.to_dict())
 
 
 # CREATE transaction
 @transaction_bp.route("/transactions", methods=["POST"])
-def add_transaction():
+@token_required
+def add_transaction(current_user_id):
     data = request.get_json()
 
-    # Validation
     if not data.get("title"):
         return jsonify({"error": "Title is required"}), 400
 
@@ -71,21 +60,27 @@ def add_transaction():
         title=data["title"],
         amount=data["amount"],
         category=data["category"],
-        type=data["type"]
+        type=data["type"],
+        user_id=current_user_id
     )
 
     db.session.add(transaction)
     db.session.commit()
 
     return jsonify({
-        "message": "Transaction added successfully"
+        "message": "Transaction added successfully",
+        "transaction": transaction.to_dict()
     }), 201
 
 
 # UPDATE transaction
 @transaction_bp.route("/transactions/<int:id>", methods=["PUT"])
-def update_transaction(id):
-    transaction = Transaction.query.get(id)
+@token_required
+def update_transaction(current_user_id, id):
+    transaction = Transaction.query.filter_by(
+        id=id,
+        user_id=current_user_id
+    ).first()
 
     if not transaction:
         return jsonify({"error": "Transaction not found"}), 404
@@ -109,14 +104,19 @@ def update_transaction(id):
     db.session.commit()
 
     return jsonify({
-        "message": "Transaction updated successfully"
+        "message": "Transaction updated successfully",
+        "transaction": transaction.to_dict()
     })
 
 
 # DELETE transaction
 @transaction_bp.route("/transactions/<int:id>", methods=["DELETE"])
-def delete_transaction(id):
-    transaction = Transaction.query.get(id)
+@token_required
+def delete_transaction(current_user_id, id):
+    transaction = Transaction.query.filter_by(
+        id=id,
+        user_id=current_user_id
+    ).first()
 
     if not transaction:
         return jsonify({"error": "Transaction not found"}), 404
@@ -131,14 +131,52 @@ def delete_transaction(id):
 
 # SUMMARY
 @transaction_bp.route("/summary", methods=["GET"])
-def get_summary():
-    transactions = Transaction.query.all()
+@token_required
+def get_summary(current_user_id):
+    transactions = (
+        Transaction.query
+        .filter_by(user_id=current_user_id)
+        .order_by(Transaction.date)
+        .all()
+    )
 
-    income = sum(t.amount for t in transactions if t.type.lower() == "income")
-    expense = sum(t.amount for t in transactions if t.type.lower() == "expense")
+    income = 0
+    expense = 0
+    expense_by_category = {}
+    monthly_trends_dict = {}
+
+    for t in transactions:
+        if t.type.lower() == "income":
+            income += t.amount
+        else:
+            expense += t.amount
+
+            cat = t.category.strip().title()
+            expense_by_category[cat] = (
+                expense_by_category.get(cat, 0) + t.amount
+            )
+
+        month_key = t.date.strftime("%b %Y")
+
+        if month_key not in monthly_trends_dict:
+            monthly_trends_dict[month_key] = {
+                "name": month_key,
+                "income": 0,
+                "expense": 0
+            }
+
+        if t.type.lower() == "income":
+            monthly_trends_dict[month_key]["income"] += t.amount
+        else:
+            monthly_trends_dict[month_key]["expense"] += t.amount
 
     return jsonify({
         "income": income,
         "expense": expense,
-        "balance": income - expense
+        "balance": income - expense,
+        "expense_by_category": [
+            {"name": k, "value": v}
+            for k, v in expense_by_category.items()
+        ],
+        "monthly_trends": list(monthly_trends_dict.values())
     })
