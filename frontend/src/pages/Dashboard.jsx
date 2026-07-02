@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { getSummary } from "../services/api";
+import { useAppRefresh } from "../context/AppRefreshContext";
+import { useDarkMode } from "../context/DarkModeContext";
 import SummaryCard from "../components/SummaryCard";
 import ExpenseCharts from "../components/ExpenseCharts";
+import DarkModeToggle from "../components/DarkModeToggle";
 
 export default function Dashboard() {
+  const { refreshKeys } = useAppRefresh();
+  const { darkMode, toggleDarkMode } = useDarkMode();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,8 +20,15 @@ export default function Dashboard() {
       const response = await getSummary();
       setSummary(response.data);
     } catch (err) {
-      console.error("Error fetching summary data:", err);
-      setError("Failed to fetch dashboard data. Please try again later.");
+      console.error("Error fetching summary data:", err?.response || err);
+      const message =
+        err?.response?.status === 401
+          ? "Session expired or invalid authentication. Please log in again."
+          : err?.response?.data?.message ||
+            err?.response?.data?.error ||
+            err?.message ||
+            "Failed to fetch dashboard data. Please try again later.";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -24,8 +36,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshKeys.dashboard]);
 
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
@@ -73,12 +84,15 @@ export default function Dashboard() {
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">{today}</p>
         </div>
-        <button onClick={fetchDashboardData} className="btn-secondary self-start sm:self-auto">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18" />
-          </svg>
-          Refresh
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <DarkModeToggle darkMode={darkMode} onToggle={toggleDarkMode} />
+          <button onClick={fetchDashboardData} className="btn-secondary">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.253 8H18" />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { deleteTransaction } from "../services/api";
+import { useAppRefresh } from "../context/AppRefreshContext";
 import EditTransactionModal from "./EditTransactionModal";
 
 const formatCurrency = (amount) =>
@@ -10,6 +11,7 @@ const formatCurrency = (amount) =>
   }).format(amount);
 
 export default function TransactionTable({ transactions, refreshTransactions }) {
+  const { triggerRefresh } = useAppRefresh();
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   const handleDelete = async (id) => {
@@ -21,6 +23,8 @@ export default function TransactionTable({ transactions, refreshTransactions }) 
     try {
       await deleteTransaction(id);
       refreshTransactions();
+      triggerRefresh('transactions');
+      triggerRefresh('dashboard');
     } catch (error) {
       console.error(error);
       alert("Failed to delete transaction");

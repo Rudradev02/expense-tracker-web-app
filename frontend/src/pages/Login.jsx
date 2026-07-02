@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../services/api";
+import { useDarkMode } from "../context/DarkModeContext";
+import DarkModeToggle from "../components/DarkModeToggle";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { darkMode, toggleDarkMode } = useDarkMode();
 
   const navigate = useNavigate();
 
@@ -23,7 +26,10 @@ export default function Login() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-zinc-900">
       <div className="w-full max-w-md p-8 bg-white/30 backdrop-blur-md rounded-xl shadow-lg dark:bg-zinc-800/30">
-        <h1 className="text-3xl font-bold text-center mb-6 dark:text-white">Login</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold dark:text-white">Login</h1>
+          <DarkModeToggle darkMode={darkMode} onToggle={toggleDarkMode} />
+        </div>
         <form onSubmit={handleSubmit}>
           <input
             className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { addCategory, deleteCategory } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
+import { useAppRefresh } from "../context/AppRefreshContext";
 
 export default function CategoryManager() {
   const { categories, refreshCategories } = useCategories();
+  const { triggerRefresh } = useAppRefresh();
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -20,6 +22,7 @@ export default function CategoryManager() {
       await addCategory(trimmed);
       setName("");
       await refreshCategories();
+      triggerRefresh('categories');
     } catch (err) {
       const message = err.response?.data?.error || "Failed to create category";
       setError(message);
@@ -35,6 +38,7 @@ export default function CategoryManager() {
     try {
       await deleteCategory(id);
       await refreshCategories();
+      triggerRefresh('categories');
     } catch (err) {
       const message = err.response?.data?.error || "Failed to delete category";
       alert(message);

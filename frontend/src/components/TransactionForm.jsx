@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { addTransaction } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
+import { useAppRefresh } from "../context/AppRefreshContext";
 import CategorySelect from "./CategorySelect";
 
 export default function TransactionForm() {
   const { categories } = useCategories();
+  const { triggerRefresh } = useAppRefresh();
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -24,6 +26,8 @@ export default function TransactionForm() {
       });
 
       alert("Transaction added successfully!");
+      triggerRefresh('transactions');
+      triggerRefresh('dashboard');
       setTitle("");
       setAmount("");
       setCategory("");

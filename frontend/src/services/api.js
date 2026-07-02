@@ -7,6 +7,9 @@ const API = axios.create({
 // Attach token automatically
 API.interceptors.request.use((req) => {
   const token = localStorage.getItem("token");
+  if (!req.headers) {
+    req.headers = {};
+  }
 
   if (token) {
     req.headers.Authorization = `Bearer ${token}`;
@@ -14,6 +17,26 @@ API.interceptors.request.use((req) => {
 
   return req;
 });
+
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Request failed";
+
+    if (status === 401) {
+      localStorage.removeItem("token");
+      delete API.defaults.headers.common["Authorization"];
+      window.location.href = "/login";
+    }
+
+    return Promise.reject({ ...error, message, status });
+  }
+);
 
 export const loginUser = async (email, password) => {
   const response = await API.post('/login', { email, password });

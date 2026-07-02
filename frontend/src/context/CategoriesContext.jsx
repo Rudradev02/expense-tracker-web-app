@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { getCategories } from "../services/api";
+import { useAppRefresh } from "./AppRefreshContext";
 
 const CategoriesContext = createContext(null);
 
 export function CategoriesProvider({ children }) {
+  const { refreshKeys } = useAppRefresh();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +22,7 @@ export function CategoriesProvider({ children }) {
 
   useEffect(() => {
     refreshCategories();
-  }, [refreshCategories]);
+  }, [refreshCategories, refreshKeys.categories]);
 
   return (
     <CategoriesContext.Provider value={{ categories, loading, refreshCategories }}>

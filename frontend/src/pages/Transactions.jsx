@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { getTransactions } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
+import { useAppRefresh } from "../context/AppRefreshContext";
 import TransactionTable from "../components/TransactionTable";
 
 export default function Transactions() {
   const { categories } = useCategories();
+  const { refreshKeys } = useAppRefresh();
   const [transactions, setTransactions] = useState([]);
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -20,7 +22,7 @@ export default function Transactions() {
 
   useEffect(() => {
     fetchTransactions();
-  }, [title, category]);
+  }, [title, category, refreshKeys.transactions]);
 
   return (
     <section className="dashboard-card overflow-hidden">

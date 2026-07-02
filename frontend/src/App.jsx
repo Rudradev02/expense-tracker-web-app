@@ -5,6 +5,8 @@ import SidebarPanel from "./pages/SidebarPanel";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { CategoriesProvider } from "./context/CategoriesContext";
+import { AppRefreshProvider } from "./context/AppRefreshContext";
+import { DarkModeProvider } from "./context/DarkModeContext";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -34,24 +36,28 @@ function Home() {
 
 function App() {
   return (
-    <CategoriesProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <DarkModeProvider>
+      <AppRefreshProvider>
+        <CategoriesProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-        <Route path="/register" element={<Register />} />
+            <Route path="/register" element={<Register />} />
 
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="/" element={<Navigate to="/dashboard" />} />
 
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </CategoriesProvider>
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </CategoriesProvider>
+      </AppRefreshProvider>
+    </DarkModeProvider>
   );
 }
 

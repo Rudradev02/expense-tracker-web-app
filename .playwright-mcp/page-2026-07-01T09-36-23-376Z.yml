@@ -1,0 +1,14 @@
+- generic [ref=f1e4]:
+  - generic [ref=f1e5]:
+    - heading "Register" [level=1] [ref=f1e6]
+    - button "Switch to dark mode" [ref=f1e7]:
+      - img [ref=f1e9]
+  - generic [ref=f1e11]:
+    - textbox "Username" [ref=f1e12]
+    - textbox "Email" [ref=f1e13]
+    - textbox "Password" [ref=f1e14]
+    - button "Register" [ref=f1e15]
+  - paragraph [ref=f1e16]:
+    - text: Already have an account?
+    - link "Login" [ref=f1e17] [cursor=pointer]:
+      - /url: /login

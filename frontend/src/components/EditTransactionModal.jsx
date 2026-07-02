@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { updateTransaction } from "../services/api";
+import { useAppRefresh } from "../context/AppRefreshContext";
 import CategorySelect from "./CategorySelect";
 
 export default function EditTransactionModal({ transaction, onClose, onSaved }) {
+  const { triggerRefresh } = useAppRefresh();
   const [title, setTitle] = useState(transaction.title);
   const [amount, setAmount] = useState(transaction.amount);
   const [category, setCategory] = useState(transaction.category);
@@ -21,6 +23,8 @@ export default function EditTransactionModal({ transaction, onClose, onSaved }) 
         type,
       });
       onSaved();
+      triggerRefresh('transactions');
+      triggerRefresh('dashboard');
       onClose();
     } catch (error) {
       console.error(error);
