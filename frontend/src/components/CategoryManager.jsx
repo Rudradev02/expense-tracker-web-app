@@ -9,6 +9,7 @@ export default function CategoryManager() {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -31,29 +32,57 @@ export default function CategoryManager() {
     }
   };
 
-  const handleDelete = async (id, categoryName) => {
-    const confirmed = window.confirm(`Delete category "${categoryName}"?`);
-    if (!confirmed) return;
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
 
     try {
-      await deleteCategory(id);
+      await deleteCategory(pendingDelete.id);
       await refreshCategories();
       triggerRefresh('categories');
     } catch (err) {
       const message = err.response?.data?.error || "Failed to delete category";
       alert(message);
+    } finally {
+      setPendingDelete(null);
     }
   };
 
   return (
-    <div className="dashboard-card mt-4 p-6">
+    <div className="dashboard-card mt-4 p-6 animate-in" style={{ animationDelay: "0.3s" }}>
       <div className="mb-4">
-        <p className="section-label mb-1">Organize</p>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Categories</h2>
-        <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">
+        <p className="section-label mb-1.5">Organize</p>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            Categories
+          </h2>
+          <span className="badge-count">
+            {categories.length}
+          </span>
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500 dark:text-zinc-400">
           Create custom categories for your transactions
         </p>
       </div>
+
+      {pendingDelete && (
+        <div className="confirm-bar mb-4">
+          <span>Delete &quot;{pendingDelete.name}&quot;?</span>
+          <div className="ml-auto flex gap-1.5">
+            <button
+              onClick={() => setPendingDelete(null)}
+              className="px-2 py-0.5 rounded text-xs font-semibold bg-white/80 hover:bg-white text-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-2 py-0.5 rounded text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleAdd} className="mb-4 flex gap-2">
         <input
@@ -83,17 +112,18 @@ export default function CategoryManager() {
         </p>
       ) : (
         <ul className="max-h-48 space-y-1.5 overflow-y-auto">
-          {categories.map((cat) => (
+          {categories.map((cat, index) => (
             <li
               key={cat.id}
-              className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/30"
+              className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-800/30 animate-in"
+              style={{ animationDelay: `${0.1 + index * 0.04}s` }}
             >
               <span className="text-sm font-medium text-slate-700 dark:text-zinc-200">
                 {cat.name}
               </span>
               <button
                 type="button"
-                onClick={() => handleDelete(cat.id, cat.name)}
+                onClick={() => setPendingDelete({ id: cat.id, name: cat.name })}
                 className="btn-icon btn-icon-delete"
                 title="Delete category"
                 aria-label={`Delete ${cat.name}`}

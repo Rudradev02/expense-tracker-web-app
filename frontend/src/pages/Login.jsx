@@ -15,7 +15,8 @@ export default function Login() {
     e.preventDefault();
     try {
       await loginUser(email, password);
-      alert("Login successful");
+      const parsedName = email.split("@")[0];
+      localStorage.setItem("username", parsedName);
       navigate("/dashboard");
     } catch (error) {
       console.error(error);
@@ -24,41 +25,76 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-zinc-900">
-      <div className="w-full max-w-md p-8 bg-white/30 backdrop-blur-md rounded-xl shadow-lg dark:bg-zinc-800/30">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold dark:text-white">Login</h1>
-          <DarkModeToggle darkMode={darkMode} onToggle={toggleDarkMode} />
+    <div className="flex items-center justify-center min-h-screen app-bg relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+
+      <div className="relative w-full max-w-md p-8 mx-4">
+        <div className="dashboard-card p-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="section-label mb-2">Welcome Back</p>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Login</h1>
+            </div>
+            <DarkModeToggle darkMode={darkMode} onToggle={toggleDarkMode} className="ml-4" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="email" className="form-label">Email Address</label>
+              <input
+                id="email"
+                className="input-field"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="form-label">Password</label>
+              <input
+                id="password"
+                className="input-field"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+
+            <button
+              className="btn-primary w-full py-3 text-base"
+              type="submit"
+            >
+              Sign In
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-600 dark:text-zinc-400">
+              Don't have an account?{' '}
+              <Link 
+                to="/register" 
+                className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline transition-colors"
+              >
+                Create one
+              </Link>
+            </p>
+          </div>
         </div>
-        <form onSubmit={handleSubmit}>
-          <input
-            className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            className="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button
-            className="w-full p-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200"
-            type="submit"
-          >
-            Login
-          </button>
-        </form>
-        <p className="mt-4 text-center dark:text-zinc-300">
-          Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-blue-600 hover:underline">
-            Register
-          </Link>
+
+        {/* Footer text */}
+        <p className="mt-6 text-center text-xs text-slate-500 dark:text-zinc-500">
+          Secure login powered by Expense Tracker
         </p>
       </div>
     </div>

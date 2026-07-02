@@ -25,16 +25,21 @@ export default function Transactions() {
   }, [title, category, refreshKeys.transactions]);
 
   return (
-    <section className="dashboard-card overflow-hidden">
+    <section className="dashboard-card overflow-hidden animate-in" style={{ animationDelay: "0.2s" }}>
       <div className="border-b border-slate-100 px-6 py-5 dark:border-zinc-800">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="section-label mb-1">Activity</p>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Recent Transactions
-            </h2>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">
-              {transactions.length} record{transactions.length !== 1 ? "s" : ""} found
+            <p className="section-label mb-1.5">Activity</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Recent Transactions
+              </h2>
+              <span className="badge-count">
+                {transactions.length}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
+              Filtered history of income and expenses
             </p>
           </div>
 
@@ -72,6 +77,36 @@ export default function Transactions() {
           </div>
         </div>
       </div>
+
+      {/* Active Filter Chips */}
+      {(title || category) && (
+        <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-slate-50/40 dark:bg-zinc-900/20 border-b border-slate-100 dark:border-zinc-800 animate-in">
+          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mr-1">
+            Active Filters:
+          </span>
+          {title && (
+            <div className="filter-chip">
+              <span>Search: &quot;{title}&quot;</span>
+              <button onClick={() => setTitle("")} className="filter-chip-close" aria-label="Clear search filter">✖</button>
+            </div>
+          )}
+          {category && (
+            <div className="filter-chip">
+              <span>Category: {category}</span>
+              <button onClick={() => setCategory("")} className="filter-chip-close" aria-label="Clear category filter">✖</button>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              setTitle("");
+              setCategory("");
+            }}
+            className="ml-auto text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
+          >
+            Clear All
+          </button>
+        </div>
+      )}
 
       <TransactionTable
         transactions={transactions}
