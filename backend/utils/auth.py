@@ -18,9 +18,10 @@ def token_required(f):
             return jsonify({"message": "Token is missing"}), 401
 
         try:
+            secret = os.getenv("SECRET_KEY") or os.getenv("SESSION_SECRET", "dev-secret-change-me")
             data = jwt.decode(
                 token,
-                os.getenv("SECRET_KEY"),
+                secret,
                 algorithms=["HS256"]
             )
 

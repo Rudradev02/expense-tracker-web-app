@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: "",
 });
 
 // Attach token automatically
@@ -39,7 +39,7 @@ API.interceptors.response.use(
 );
 
 export const loginUser = async (email, password) => {
-  const response = await API.post('/login', { email, password });
+  const response = await API.post('/api/login', { email, password });
   const token = response.data.token;
   localStorage.setItem('token', token);
   // Set default Authorization header for subsequent requests
@@ -48,7 +48,7 @@ export const loginUser = async (email, password) => {
 };
 
 export const registerUser = async (username, email, password) => {
-  const response = await API.post('/register', { username, email, password });
+  const response = await API.post('/api/register', { username, email, password });
   return response;
 };
 

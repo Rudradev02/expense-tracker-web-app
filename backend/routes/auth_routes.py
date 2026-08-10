@@ -56,12 +56,13 @@ def login():
     ):
         return jsonify({"message": "Invalid email or password"}), 401
 
+    secret = os.getenv("SECRET_KEY") or os.getenv("SESSION_SECRET", "dev-secret-change-me")
     token = jwt.encode(
         {
             "user_id": user.id,
             "exp": datetime.utcnow() + timedelta(days=1)
         },
-        os.getenv("SECRET_KEY"),
+        secret,
         algorithm="HS256"
     )
 
