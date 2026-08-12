@@ -5,6 +5,7 @@ backend/venv/
 backend/__pycache__/
 backend/instance/
 *.pyc
+.venv/
 
 # ==========================
 # Node.js
