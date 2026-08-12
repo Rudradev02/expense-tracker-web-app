@@ -1,7 +1,13 @@
 """
 One-time migration script: adds user_id column to transaction table in Neon PostgreSQL
-Run with: venv\Scripts\python migrate_add_user_id.py
+Run with: cd backend && venv/Scripts/python scripts/migrate_add_user_id.py
 """
+import sys
+import os
+
+# Ensure the parent backend directory is on sys.path so `from app import ...` works
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 from app import app, db
 from sqlalchemy import text
 

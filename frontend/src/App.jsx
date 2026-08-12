@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
-import SidebarPanel from "./pages/SidebarPanel";
+import SidebarPanel from "./components/SidebarPanel";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Navbar from "./components/Navbar";

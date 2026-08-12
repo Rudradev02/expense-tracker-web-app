@@ -1,5 +1,5 @@
 import AddTransaction from "./AddTransaction";
-import CategoryManager from "../components/CategoryManager";
+import CategoryManager from "./CategoryManager";
 
 export default function SidebarPanel() {
   return (
