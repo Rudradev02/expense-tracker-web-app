@@ -13,15 +13,15 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const COLORS = [
-  "#6366f1", // indigo-500
-  "#ec4899", // pink-500
-  "#14b8a6", // teal-500
-  "#f59e0b", // amber-500
-  "#ef4444", // red-500
-  "#8b5cf6", // violet-500
-  "#10b981", // emerald-500
-  "#3b82f6", // blue-500
+const FINTECH_COLORS = [
+  "#2563EB", // Primary Blue
+  "#10B981", // Emerald
+  "#F59E0B", // Amber
+  "#EF4444", // Coral Red
+  "#8B5CF6", // Violet
+  "#ec4899", // Pink
+  "#14b8a6", // Teal
+  "#6366f1", // Indigo
 ];
 
 const formatINR = (value) => `₹${value.toLocaleString("en-IN")}`;
@@ -30,24 +30,16 @@ function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
 
   return (
-    <div
-      style={{
-        background: "rgba(15, 23, 42, 0.88)",
-        backdropFilter: "blur(12px)",
-        borderRadius: "12px",
-        padding: "12px 16px",
-        border: "1px solid rgba(99, 102, 241, 0.25)",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-      }}
-    >
+    <div className="bg-slate-900/95 dark:bg-zinc-900/95 text-white border border-slate-700/80 rounded-xl p-3 shadow-xl backdrop-blur-md">
       {label && (
-        <p style={{ color: "#94a3b8", fontSize: "12px", fontWeight: 600, marginBottom: "6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">
           {label}
         </p>
       )}
       {payload.map((entry, index) => (
-        <p key={index} style={{ color: entry.color, fontSize: "14px", fontWeight: 700, margin: "2px 0" }}>
-          {entry.name}: {formatINR(entry.value)}
+        <p key={index} className="text-sm font-bold flex items-center justify-between gap-4" style={{ color: entry.color }}>
+          <span>{entry.name}:</span>
+          <span>{formatINR(entry.value)}</span>
         </p>
       ))}
     </div>
@@ -58,10 +50,10 @@ function DonutCenterLabel({ viewBox, total }) {
   const { cx, cy } = viewBox;
   return (
     <g>
-      <text x={cx} y={cy - 8} textAnchor="middle" style={{ fontSize: "12px", fontWeight: 600, fill: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+      <text x={cx} y={cy - 8} textAnchor="middle" className="text-xs font-bold fill-slate-400 uppercase tracking-wider">
         Total
       </text>
-      <text x={cx} y={cy + 16} textAnchor="middle" style={{ fontSize: "20px", fontWeight: 800, fill: "#f43f5e" }}>
+      <text x={cx} y={cy + 16} textAnchor="middle" className="text-lg font-black fill-rose-500">
         {formatINR(total)}
       </text>
     </g>
@@ -74,10 +66,20 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends }) {
   const totalExpense = expenseByCategory.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="chart-container mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
-      {/* Pie Chart */}
-      <div className="dashboard-card p-6">
-        <p className="section-label mb-4">Expenses by Category</p>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      {/* Category Breakdown Donut */}
+      <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Expense Overview
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
+              Categorized spending distribution
+            </p>
+          </div>
+        </div>
+
         <div className="h-72">
           {expenseByCategory.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -86,20 +88,18 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends }) {
                   data={expenseByCategory}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
+                  innerRadius={65}
+                  outerRadius={95}
+                  paddingAngle={4}
                   dataKey="value"
                   strokeWidth={0}
                 >
                   {expenseByCategory.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={FINTECH_COLORS[index % FINTECH_COLORS.length]} />
                   ))}
                 </Pie>
                 <PieTooltip content={<CustomTooltip />} />
-                <Legend
-                  wrapperStyle={{ fontSize: "12px", fontWeight: 600 }}
-                />
+                <Legend wrapperStyle={{ fontSize: "12px", fontWeight: 600 }} />
                 {totalExpense > 0 && (
                   <Pie
                     data={[{ value: 1 }]}
@@ -116,35 +116,43 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends }) {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-zinc-800">
-                <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                </svg>
+            <div className="flex h-full flex-col items-center justify-center text-center p-6">
+              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 mb-2">
+                📊
               </div>
-              <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">No expenses to show</p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-zinc-500">Add some transactions to see your breakdown</p>
+              <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
+                No expense data available
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Area Chart (replaces Line Chart) */}
-      <div className="dashboard-card p-6">
-        <p className="section-label mb-4">Monthly Trends</p>
+      {/* Monthly Trends Area Chart */}
+      <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Monthly Trends
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">
+              Income vs expense comparison over time
+            </p>
+          </div>
+        </div>
+
         <div className="h-72">
           {monthlyTrends.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyTrends}>
                 <defs>
                   <linearGradient id="gradientIncome" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#10B981" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="gradientExpense" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#EF4444" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#EF4444" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} vertical={false} />
@@ -153,42 +161,39 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends }) {
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => `₹${value > 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
+                  tickFormatter={(value) => `₹${value >= 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
                   dx={-10}
                 />
                 <AreaTooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 600 }} />
+                <Legend wrapperStyle={{ paddingTop: '16px', fontSize: '12px', fontWeight: 600 }} />
                 <Area
                   type="monotone"
                   dataKey="income"
                   name="Income"
-                  stroke="#10b981"
-                  strokeWidth={3}
+                  stroke="#10B981"
+                  strokeWidth={2.5}
                   fill="url(#gradientIncome)"
-                  dot={{ r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff" }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  dot={{ r: 3, fill: "#10B981", strokeWidth: 2, stroke: "#fff" }}
                 />
                 <Area
                   type="monotone"
                   dataKey="expense"
                   name="Expense"
-                  stroke="#f43f5e"
-                  strokeWidth={3}
+                  stroke="#EF4444"
+                  strokeWidth={2.5}
                   fill="url(#gradientExpense)"
-                  dot={{ r: 4, fill: "#f43f5e", strokeWidth: 2, stroke: "#fff" }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  dot={{ r: 3, fill: "#EF4444", strokeWidth: 2, stroke: "#fff" }}
                 />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-zinc-800">
-                <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
+            <div className="flex h-full flex-col items-center justify-center text-center p-6">
+              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 mb-2">
+                📈
               </div>
-              <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">No trends to show</p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-zinc-500">Trends will appear after adding transactions</p>
+              <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
+                No monthly trend data available
+              </p>
             </div>
           )}
         </div>
