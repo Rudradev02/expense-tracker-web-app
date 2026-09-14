@@ -50,8 +50,10 @@ function useAnimatedCounter(target, duration = 1200) {
 
   useEffect(() => {
     if (target === 0) {
-      setValue(0);
-      return;
+      rafRef.current = requestAnimationFrame(() => setValue(0));
+      return () => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      };
     }
 
     const absTarget = Math.abs(target);

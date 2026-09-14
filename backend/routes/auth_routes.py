@@ -37,6 +37,8 @@ def register():
     db.session.commit()
 
     return jsonify({"message": "User registered successfully"})
+
+
 # Login
 @auth_bp.route("/login", methods=["POST"])
 def login():

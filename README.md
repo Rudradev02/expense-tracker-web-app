@@ -45,24 +45,30 @@ A full-stack expense management application that helps users track their income 
 
 ```text
 expense-tracker-web-app/
-│
-├── frontend/
-│   ├── src/
-│   ├── components/
-│   ├── pages/
-│   └── ...
-│
 ├── backend/
-│   ├── routes/
-│   ├── models/
-│   ├── database/
-│   └── ...
-│
-├── README.md
-└── ...
+│   ├── routes/          # Auth, Category, and Transaction Blueprints
+│   ├── scripts/         # One-time database migration scripts
+│   ├── utils/           # Authentication helpers and JWT decorators
+│   ├── app.py           # Main Flask application entry point
+│   ├── config.py        # Database configuration
+│   ├── models.py        # SQLAlchemy models (User, Category, Transaction)
+│   └── requirements.txt # Backend Python dependencies
+├── frontend/
+│   ├── public/          # Static public assets
+│   ├── src/
+│   │   ├── components/  # Reusable UI components
+│   │   ├── context/     # App refresh, categories, and dark mode contexts
+│   │   ├── pages/       # Login, Register, Dashboard, Transactions pages
+│   │   ├── services/    # Axios API client setup
+│   │   ├── App.jsx      # Main application router and protected routes
+│   │   ├── index.css    # Modern glassmorphism design system & styles
+│   │   └── main.jsx     # Vite application entry point
+│   ├── package.json     # Frontend dependencies and scripts
+│   └── vite.config.js   # Vite configuration and proxy setup
+├── .gitignore           # Git ignore rules
+├── pyproject.toml       # Python package configuration
+└── README.md            # Project documentation
 ```
-
-> The exact folder structure may vary depending on the current project version.
 
 ## ⚙️ Getting Started
 

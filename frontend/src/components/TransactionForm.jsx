@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { addTransaction, getSummary } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
@@ -17,18 +17,18 @@ export default function TransactionForm() {
 
   const BUDGET_LIMIT = 25000;
 
-  const fetchBudgetStatus = async () => {
+  const fetchBudgetStatus = useCallback(async () => {
     try {
       const response = await getSummary();
       setSpent(response.data.expense || 0);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchBudgetStatus();
-  }, [refreshKeys.transactions]);
+  }, [fetchBudgetStatus, refreshKeys.transactions]);
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);

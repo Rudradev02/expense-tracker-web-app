@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getTransactions } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
@@ -11,18 +11,18 @@ export default function Transactions() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     try {
       const response = await getTransactions(title, category);
       setTransactions(response.data);
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [title, category]);
 
   useEffect(() => {
     fetchTransactions();
-  }, [title, category, refreshKeys.transactions]);
+  }, [fetchTransactions, refreshKeys.transactions]);
 
   return (
     <section className="dashboard-card overflow-hidden animate-in" style={{ animationDelay: "0.2s" }}>
