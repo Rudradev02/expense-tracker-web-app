@@ -57,6 +57,20 @@ Thumbs.db
 ruvector.db
 
 # ==========================
+# Replit (not needed locally)
+# ==========================
+.replit
+replit.md
+pyproject.toml
+uv.lock
+
+# ==========================
+# Root-level duplicates
+# ==========================
+/package.json
+/package-lock.json
+
+# ==========================
 # Logs & Temp
 # ==========================
 *.log
