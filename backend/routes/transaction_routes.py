@@ -210,6 +210,45 @@ def add_transaction(current_user_id):
     db.session.add(transaction)
     db.session.commit()
 
+    # If marked as recurring, establish recurring rule and attach to transaction
+    if data.get("is_recurring"):
+        try:
+            from models import RecurringRule
+            from utils.recurring_processor import compute_next_run_date
+            frequency = (data.get("frequency") or "monthly").strip().lower()
+            if frequency not in ["daily", "weekly", "monthly", "yearly"]:
+                frequency = "monthly"
+
+            today = datetime.utcnow().date()
+            next_run = compute_next_run_date(today, frequency, today.day)
+
+            end_date = None
+            if data.get("end_date"):
+                try:
+                    end_date = datetime.strptime(str(data["end_date"])[:10], "%Y-%m-%d").date()
+                except Exception:
+                    pass
+
+            rule = RecurringRule(
+                description=transaction.title,
+                amount=transaction.amount,
+                type=transaction.type,
+                category=transaction.category,
+                frequency=frequency,
+                start_date=today,
+                next_run_date=next_run,
+                end_date=end_date,
+                active=True,
+                user_id=current_user_id
+            )
+            db.session.add(rule)
+            db.session.flush()
+            transaction.recurring_rule_id = rule.id
+            db.session.commit()
+        except Exception as e:
+            pass
+
+
     # Check if transaction pushes category budget over 80% or 100%
     budget_alert = None
     if transaction.type.lower() == "expense":
@@ -442,3 +481,191 @@ def get_summary(current_user_id):
         ],
         "monthly_trends": list(monthly_trends_dict.values())
     })
+
+
+# INSIGHTS
+@transaction_bp.route("/insights", methods=["GET"])
+@token_required
+def get_insights(current_user_id):
+    now = datetime.utcnow()
+    current_year = now.year
+    current_month = now.month
+
+    # Current month date bounds
+    start_current = datetime(current_year, current_month, 1)
+    if current_month == 12:
+        start_next = datetime(current_year + 1, 1, 1)
+    else:
+        start_next = datetime(current_year, current_month + 1, 1)
+
+    # Previous month date bounds
+    if current_month == 1:
+        start_prev = datetime(current_year - 1, 12, 1)
+    else:
+        start_prev = datetime(current_year, current_month - 1, 1)
+    end_prev = start_current
+
+    # Fetch transactions across previous and current months
+    transactions = (
+        Transaction.query
+        .filter(
+            Transaction.user_id == current_user_id,
+            Transaction.date >= start_prev,
+            Transaction.date < start_next
+        )
+        .all()
+    )
+
+    curr_income = 0.0
+    curr_expense = 0.0
+    curr_cat_expenses = {}
+
+    prev_income = 0.0
+    prev_expense = 0.0
+    prev_cat_expenses = {}
+
+    for t in transactions:
+        is_curr = t.date >= start_current
+        amt = float(t.amount or 0)
+        t_type = (t.type or "").lower()
+        cat = (t.category or "General").strip().title()
+
+        if is_curr:
+            if t_type == "income":
+                curr_income += amt
+            else:
+                curr_expense += amt
+                curr_cat_expenses[cat] = curr_cat_expenses.get(cat, 0.0) + amt
+        else:
+            if t_type == "income":
+                prev_income += amt
+            else:
+                prev_expense += amt
+                prev_cat_expenses[cat] = prev_cat_expenses.get(cat, 0.0) + amt
+
+    insights = []
+
+    # 1. Category expense comparison vs last month (most significant shift)
+    candidate_cat = None
+    candidate_pct = 0
+    # Prioritize categories with highest current expenditure
+    sorted_curr_cats = sorted(curr_cat_expenses.items(), key=lambda x: x[1], reverse=True)
+    for cat, curr_amt in sorted_curr_cats:
+        if cat in prev_cat_expenses and prev_cat_expenses[cat] > 0:
+            prev_amt = prev_cat_expenses[cat]
+            pct = round(((curr_amt - prev_amt) / prev_amt) * 100)
+            if abs(pct) >= 1:
+                candidate_cat = cat
+                candidate_pct = pct
+                break
+
+    if candidate_cat:
+        if candidate_pct > 0:
+            insights.append({
+                "id": "category_trend",
+                "prefix": "You spent ",
+                "highlight": f"{candidate_pct}% more",
+                "suffix": f" on {candidate_cat} than last month.",
+                "type": "expense",
+                "direction": "up"
+            })
+        elif candidate_pct < 0:
+            insights.append({
+                "id": "category_trend",
+                "prefix": "You spent ",
+                "highlight": f"{abs(candidate_pct)}% less",
+                "suffix": f" on {candidate_cat} than last month.",
+                "type": "income",
+                "direction": "down"
+            })
+    elif prev_expense > 0 and curr_expense > 0:
+        overall_pct = round(((curr_expense - prev_expense) / prev_expense) * 100)
+        if overall_pct > 0:
+            insights.append({
+                "id": "overall_expense_trend",
+                "prefix": "Your overall spending is ",
+                "highlight": f"{overall_pct}% higher",
+                "suffix": " than last month.",
+                "type": "expense",
+                "direction": "up"
+            })
+        elif overall_pct < 0:
+            insights.append({
+                "id": "overall_expense_trend",
+                "prefix": "Your overall spending is ",
+                "highlight": f"{abs(overall_pct)}% lower",
+                "suffix": " than last month.",
+                "type": "income",
+                "direction": "down"
+            })
+
+    # 2. Savings rate this month
+    if curr_income > 0:
+        savings = curr_income - curr_expense
+        savings_rate = round((savings / curr_income) * 100)
+        if savings_rate >= 0:
+            insights.append({
+                "id": "savings_rate",
+                "prefix": "Savings rate this month: ",
+                "highlight": f"{min(100, savings_rate)}%",
+                "suffix": ".",
+                "type": "income" if savings_rate >= 20 else "neutral",
+                "direction": "up" if savings_rate >= 20 else None
+            })
+        else:
+            insights.append({
+                "id": "savings_rate",
+                "prefix": "Expenses exceeded revenue by ",
+                "highlight": f"{abs(savings_rate)}%",
+                "suffix": " this month.",
+                "type": "expense",
+                "direction": "down"
+            })
+
+    # 3. Biggest expense category this month
+    if curr_cat_expenses:
+        top_cat, top_amt = max(curr_cat_expenses.items(), key=lambda x: x[1])
+        if top_amt > 0:
+            insights.append({
+                "id": "biggest_expense",
+                "prefix": f"Your biggest expense category is {top_cat} (",
+                "highlight": f"₹{top_amt:,.0f}",
+                "suffix": ").",
+                "type": "expense",
+                "direction": None
+            })
+
+    # 4. Budget adherence
+    budgets = Budget.query.filter_by(user_id=current_user_id).all()
+    if budgets:
+        total_budgets = len(budgets)
+        under_count = sum(
+            1 for b in budgets
+            if curr_cat_expenses.get(b.category.strip().title(), 0.0) <= float(b.monthly_limit or 0)
+        )
+        is_all_under = under_count == total_budgets
+        insights.append({
+            "id": "budget_status",
+            "prefix": "You're on track to stay under budget in ",
+            "highlight": f"{under_count} of {total_budgets}",
+            "suffix": " categories.",
+            "type": "income" if is_all_under else ("expense" if under_count < total_budgets / 2 else "neutral"),
+            "direction": "up" if is_all_under else None
+        })
+    elif len(insights) < 3 and curr_expense > 0:
+        days_passed = max(1, now.day)
+        daily_avg = curr_expense / days_passed
+        insights.append({
+            "id": "daily_avg",
+            "prefix": "Average daily expenditure this month: ",
+            "highlight": f"₹{daily_avg:,.0f}",
+            "suffix": f" (across {days_passed} day{'s' if days_passed > 1 else ''}).",
+            "type": "neutral",
+            "direction": None
+        })
+
+    return jsonify({
+        "insights": insights[:4],
+        "has_data": len(insights) > 0,
+        "month_name": now.strftime("%B %Y")
+    })

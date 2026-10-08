@@ -6,6 +6,8 @@ from routes.transaction_routes import transaction_bp
 from routes.category_routes import category_bp
 from routes.auth_routes import auth_bp
 from routes.budget_routes import budget_bp
+from routes.recurring_routes import recurring_bp
+from utils.recurring_processor import process_due_recurring_rules, start_recurring_scheduler
 import os
 
 # Load environment variables
@@ -35,6 +37,8 @@ app.register_blueprint(transaction_bp)
 app.register_blueprint(category_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(budget_bp)
+app.register_blueprint(recurring_bp)
+
 # Default categories
 DEFAULT_CATEGORIES = [
     "Food",
@@ -46,16 +50,35 @@ DEFAULT_CATEGORIES = [
 
 # Create tables and add default categories
 with app.app_context():
-    from models import Transaction, Category, Budget
+    from models import Transaction, Category, Budget, RecurringRule
 
     # Create tables if they don't exist
     db.create_all()
+
+    # Safe schema migration: ensure recurring_rule_id column exists on transaction table
+    try:
+        from sqlalchemy import text
+        with db.engine.connect() as conn:
+            conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS recurring_rule_id INTEGER REFERENCES "recurring_rules"(id) ON DELETE SET NULL;'))
+            conn.commit()
+    except Exception as e:
+        app.logger.info(f"Schema migration note: {e}")
 
     # Add default categories only once
     if Category.query.count() == 0:
         for name in DEFAULT_CATEGORIES:
             db.session.add(Category(name=name))
         db.session.commit()
+
+    # Process due recurring transactions on startup
+    try:
+        process_due_recurring_rules()
+    except Exception as e:
+        app.logger.warning(f"Initial recurring check note: {e}")
+
+# Start scheduled background job (every 5 minutes)
+start_recurring_scheduler(app, interval_seconds=300)
+
 
 
 # Health check route

@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import CategoriesPage from "./pages/CategoriesPage";
 import BudgetsPage from "./pages/BudgetsPage";
+import RecurringPage from "./pages/RecurringPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { CategoriesProvider } from "./context/CategoriesContext";
@@ -50,6 +51,14 @@ function App() {
               }
             />
             <Route
+              path="/recurring"
+              element={
+                <ProtectedShell>
+                  <RecurringPage />
+                </ProtectedShell>
+              }
+            />
+            <Route
               path="/categories"
               element={
                 <ProtectedShell>
@@ -67,6 +76,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+
         </CategoriesProvider>
       </AppRefreshProvider>
     </DarkModeProvider>

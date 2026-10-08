@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { getTransactions, deleteTransaction, exportTransactions } from "../services/api";
+
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import TransactionTable from "../components/TransactionTable";
@@ -398,13 +399,31 @@ export default function Transactions() {
           <span className="section-label" style={{ color: "var(--text-muted)" }}>
             Ledger
           </span>
-          <h2 className="text-2xl font-bold tracking-tight m-0 mt-1" style={{ color: "var(--text)" }}>
-            Transaction History
-          </h2>
+          <div className="flex items-center gap-3 mt-1">
+            <h2 className="text-2xl font-bold tracking-tight m-0" style={{ color: "var(--text)" }}>
+              Transaction History
+            </h2>
+            <div className="inline-flex rounded-lg border border-[var(--border)] overflow-hidden text-xs">
+              <span
+                className="px-2.5 py-1 font-semibold"
+                style={{ backgroundColor: "var(--surface-2)", color: "var(--accent)" }}
+              >
+                Ledger
+              </span>
+              <Link
+                to="/recurring"
+                className="px-2.5 py-1 no-underline transition-colors hover:text-[var(--text)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Recurring Rules
+              </Link>
+            </div>
+          </div>
           <p className="text-xs sm:text-sm mt-0.5 m-0" style={{ color: "var(--text-muted)" }}>
             Review, filter, and audit recorded revenue and disbursements
           </p>
         </div>
+
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
           {/* Export Dropdown */}

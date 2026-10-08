@@ -17,6 +17,11 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
   const [toast, setToast] = useState(null);
   const [spent, setSpent] = useState(0);
 
+  // Recurring options for new transactions
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState("monthly");
+  const [endDate, setEndDate] = useState("");
+
   const BUDGET_LIMIT = 25000;
 
   useEffect(() => {
@@ -25,11 +30,15 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       setAmount(transaction.amount ?? "");
       setCategory(transaction.category || "");
       setType(transaction.type || "expense");
+      setIsRecurring(Boolean(transaction.is_recurring));
     } else {
       setTitle("");
       setAmount("");
       setCategory("");
       setType("expense");
+      setIsRecurring(false);
+      setFrequency("monthly");
+      setEndDate("");
     }
   }, [transaction]);
 
@@ -63,6 +72,12 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         type,
       };
 
+      if (!isEditing && isRecurring) {
+        payload.is_recurring = true;
+        payload.frequency = frequency;
+        if (endDate) payload.end_date = endDate;
+      }
+
       let res;
       if (isEditing) {
         res = await updateTransaction(transaction.id, payload);
@@ -79,25 +94,36 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       } else {
         showToast(
           "success",
-          isEditing ? "Transaction updated successfully." : "Transaction recorded successfully."
+          isEditing
+            ? "Transaction updated successfully."
+            : isRecurring
+            ? "Transaction recorded and recurring rule established."
+            : "Transaction recorded successfully."
         );
       }
 
       triggerRefresh("transactions");
       triggerRefresh("dashboard");
       triggerRefresh("budgets");
+      if (isRecurring) {
+        triggerRefresh("recurring");
+      }
 
       if (!isEditing) {
         setTitle("");
         setAmount("");
         setCategory("");
         setType("expense");
+        setIsRecurring(false);
+        setFrequency("monthly");
+        setEndDate("");
       }
 
       if (onSuccess) {
         setTimeout(onSuccess, 600);
       }
     } catch (error) {
+
       console.error(error);
       showToast(
         "error",
@@ -197,6 +223,62 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
             onChange={(e) => setCategory(e.target.value)}
           />
         </div>
+
+        {/* Option to mark as recurring (for new transactions) */}
+        {!isEditing && (
+          <div
+            className="p-3 rounded-lg space-y-2.5"
+            style={{
+              backgroundColor: "var(--surface-2)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-medium">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                className="accent-[var(--accent)] cursor-pointer"
+                id="checkbox-is-recurring"
+              />
+              <span style={{ color: "var(--text)" }}>Repeat this transaction (recurring rule)</span>
+            </label>
+
+            {isRecurring && (
+              <div className="grid grid-cols-2 gap-2.5 pt-1 animate-fade-in">
+                <div>
+                  <label htmlFor="tx-recurring-freq" className="form-label text-[10px]">
+                    Frequency
+                  </label>
+                  <select
+                    id="tx-recurring-freq"
+                    className="input-field text-xs py-1.5"
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value)}
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="tx-recurring-end" className="form-label text-[10px]">
+                    End Date (Optional)
+                  </label>
+                  <input
+                    id="tx-recurring-end"
+                    type="date"
+                    className="input-field text-xs py-1.5"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
 
         <div className="flex items-center gap-3 pt-2">
           {onCancel && (

@@ -31,6 +31,14 @@ export default defineConfig({
         target: backendTarget,
         changeOrigin: true,
       },
+      '/recurring-rules': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
+      '/insights': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
       '/api': {
         target: backendTarget,
         changeOrigin: true,

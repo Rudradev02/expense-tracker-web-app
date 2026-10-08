@@ -105,4 +105,24 @@ export const deleteBudget = (id) =>
 
 export const getBudgetStatus = () => API.get("/budgets/status");
 
+export const getRecurringRules = () => API.get("/recurring-rules");
+
+export const createRecurringRule = (ruleData) =>
+  API.post("/recurring-rules", ruleData);
+
+export const updateRecurringRule = (id, ruleData) =>
+  API.put(`/recurring-rules/${id}`, ruleData);
+
+export const toggleRecurringRule = (id) =>
+  API.patch(`/recurring-rules/${id}/toggle`);
+
+export const deleteRecurringRule = (id) =>
+  API.delete(`/recurring-rules/${id}`);
+
+export const processRecurringRules = () =>
+  API.post("/recurring-rules/process");
+
+export const getInsights = () => API.get("/insights");
+
 export default API;
+

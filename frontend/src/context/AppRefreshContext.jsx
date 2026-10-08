@@ -16,6 +16,7 @@ export function AppRefreshProvider({ children }) {
     categories: 0,
     dashboard: 0,
     budgets: 0,
+    recurring: 0,
   });
 
   const triggerRefresh = useCallback((type = 'all') => {
@@ -26,6 +27,7 @@ export function AppRefreshProvider({ children }) {
           categories: prev.categories + 1,
           dashboard: prev.dashboard + 1,
           budgets: (prev.budgets || 0) + 1,
+          recurring: (prev.recurring || 0) + 1,
         };
       }
       return {

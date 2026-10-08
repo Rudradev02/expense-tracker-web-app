@@ -6,6 +6,8 @@ import SummaryCard from "../components/SummaryCard";
 import ExpenseCharts from "../components/ExpenseCharts";
 import TransactionForm from "../components/TransactionForm";
 import BudgetWidget from "../components/BudgetWidget";
+import InsightsCard from "../components/InsightsCard";
+
 
 export default function Dashboard() {
   const { refreshKeys, triggerRefresh } = useAppRefresh();
@@ -287,11 +289,15 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Financial Insights Card */}
+      <InsightsCard />
+
       {/* Analytics Charts Section */}
       <ExpenseCharts
         expenseByCategory={summary?.expense_by_category}
         monthlyTrends={summary?.monthly_trends}
       />
+
 
       {/* Category Budgets Widget */}
       <BudgetWidget showViewAllLink={true} limitDisplay={4} />
@@ -351,8 +357,22 @@ export default function Dashboard() {
                   return (
                     <tr key={tx.id}>
                       <td className="font-medium" style={{ color: "var(--text)" }}>
-                        {tx.title}
+                        <div className="flex items-center gap-1.5">
+                          <span>{tx.title}</span>
+                          {tx.is_recurring && (
+                            <span
+                              title="Recurring transaction"
+                              aria-label="Recurring transaction"
+                              className="inline-flex items-center text-[var(--accent)] opacity-85 shrink-0"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            </span>
+                          )}
+                        </div>
                       </td>
+
                       <td className="text-xs" style={{ color: "var(--text-muted)" }}>
                         {tx.category}
                       </td>
