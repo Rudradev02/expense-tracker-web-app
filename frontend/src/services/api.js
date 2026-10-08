@@ -199,6 +199,12 @@ export const scanReceipt = (data) => {
 
 export const parseReceiptText = (text) => API.post("/scan-receipt", { text });
 
+export const getGoals = () => API.get("/goals");
+export const createGoal = (goalData) => API.post("/goals", goalData);
+export const updateGoal = (id, goalData) => API.put(`/goals/${id}`, goalData);
+export const deleteGoal = (id) => API.delete(`/goals/${id}`);
+export const contributeToGoal = (id, amount) => API.post(`/goals/${id}/contribute`, { amount });
+
 export const loadSampleData = () => API.post("/transactions/sample-data");
 
 export default API;

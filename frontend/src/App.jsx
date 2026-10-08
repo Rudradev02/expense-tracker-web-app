@@ -5,6 +5,7 @@ import Transactions from "./pages/Transactions";
 import CategoriesPage from "./pages/CategoriesPage";
 import BudgetsPage from "./pages/BudgetsPage";
 import RecurringPage from "./pages/RecurringPage";
+import GoalsPage from "./pages/GoalsPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { CategoriesProvider } from "./context/CategoriesContext";
@@ -71,6 +72,14 @@ function App() {
               element={
                 <ProtectedShell>
                   <BudgetsPage />
+                </ProtectedShell>
+              }
+            />
+            <Route
+              path="/goals"
+              element={
+                <ProtectedShell>
+                  <GoalsPage />
                 </ProtectedShell>
               }
             />

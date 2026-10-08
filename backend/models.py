@@ -36,6 +36,13 @@ class User(db.Model):
         cascade="all, delete-orphan"
     )
 
+    goals = db.relationship(
+        "Goal",
+        backref="user",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -172,4 +179,34 @@ class RecurringRule(db.Model):
             "active": self.active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "user_id": self.user_id
-        }
+        }
+
+
+class Goal(db.Model):
+    __tablename__ = "goals"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    target_amount = db.Column(db.Float, nullable=False)
+    saved_amount = db.Column(db.Float, nullable=False, default=0.0)
+    target_date = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Link goal to a user
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id"),
+        nullable=False
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "target_amount": round(float(self.target_amount), 2),
+            "saved_amount": round(float(self.saved_amount or 0.0), 2),
+            "target_date": self.target_date.isoformat() if self.target_date else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "user_id": self.user_id
+        }
+

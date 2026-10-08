@@ -78,6 +78,15 @@ export default function AppShell({ children }) {
       ),
     },
     {
+      label: "Goals",
+      path: "/goals",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      ),
+    },
+    {
       label: "Recurring",
       path: "/recurring",
       icon: (

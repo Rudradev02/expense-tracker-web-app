@@ -185,6 +185,23 @@ export default function CommandPalette({ isOpen, onClose, onOpenAddTransaction }
         },
       },
       {
+        id: "nav-goals",
+        label: "Go to Savings Goals",
+        description: "Track milestones, savings velocity, and financial targets",
+        category: "Navigation",
+        shortcut: "G S",
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        ),
+        keywords: ["goals", "targets", "savings", "nest egg", "milestones"],
+        action: () => {
+          onClose();
+          navigate("/goals");
+        },
+      },
+      {
         id: "action-add-transaction",
         label: "Add transaction",
         description: "Log a new income or expense entry",

@@ -9,6 +9,7 @@ from routes.budget_routes import budget_bp
 from routes.recurring_routes import recurring_bp
 from routes.forecast_routes import forecast_bp
 from routes.receipt_routes import receipt_bp
+from routes.goal_routes import goal_bp
 from utils.recurring_processor import process_due_recurring_rules, start_recurring_scheduler
 import os
 
@@ -42,10 +43,11 @@ app.register_blueprint(budget_bp)
 app.register_blueprint(recurring_bp)
 app.register_blueprint(forecast_bp)
 app.register_blueprint(receipt_bp)
+app.register_blueprint(goal_bp)
 
 # Create tables, run migration, and seed categories
 with app.app_context():
-    from models import Transaction, Category, Budget, RecurringRule, User
+    from models import Transaction, Category, Budget, RecurringRule, User, Goal
     from utils.migration import run_data_migration
 
     # Create tables if they don't exist
