@@ -42,6 +42,9 @@ export const loginUser = async (email, password) => {
   const response = await API.post('/api/login', { email, password });
   const token = response.data.token;
   localStorage.setItem('token', token);
+  if (response.data.username) {
+    localStorage.setItem('username', response.data.username);
+  }
   // Set default Authorization header for subsequent requests
   API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   return response;
