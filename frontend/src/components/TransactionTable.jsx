@@ -10,7 +10,16 @@ const formatCurrency = (amount) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-export default function TransactionTable({ transactions, refreshTransactions }) {
+export default function TransactionTable({
+  transactions = [],
+  refreshTransactions,
+  sortBy = "date",
+  sortOrder = "desc",
+  onSort,
+  isFiltered = false,
+  onClearFilters,
+  loading = false,
+}) {
   const { triggerRefresh } = useAppRefresh();
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -25,8 +34,8 @@ export default function TransactionTable({ transactions, refreshTransactions }) 
     try {
       await deleteTransaction(id);
       refreshTransactions();
-      triggerRefresh('transactions');
-      triggerRefresh('dashboard');
+      triggerRefresh("transactions");
+      triggerRefresh("dashboard");
     } catch (error) {
       console.error(error);
       alert("Failed to delete transaction");
@@ -35,7 +44,100 @@ export default function TransactionTable({ transactions, refreshTransactions }) 
     }
   };
 
+  const renderSortIndicator = (columnKey) => {
+    const isSorted = sortBy === columnKey;
+    if (!isSorted) {
+      return (
+        <span
+          className="opacity-0 group-hover:opacity-40 transition-opacity ml-1.5 inline-block text-[10px]"
+          aria-hidden="true"
+        >
+          ↕
+        </span>
+      );
+    }
+    return (
+      <span
+        className="ml-1.5 inline-block font-bold text-xs"
+        style={{ color: "var(--accent)" }}
+        aria-label={sortOrder === "asc" ? "sorted ascending" : "sorted descending"}
+      >
+        {sortOrder === "asc" ? "↑" : "↓"}
+      </span>
+    );
+  };
+
+  const handleHeaderClick = (columnKey) => {
+    if (onSort) {
+      onSort(columnKey);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th style={{ textAlign: "right" }}>Amount</th>
+              <th style={{ textAlign: "right" }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <tr key={i}>
+                <td><div className="skeleton h-4 w-32 rounded"></div></td>
+                <td><div className="skeleton h-4 w-20 rounded"></div></td>
+                <td><div className="skeleton h-4 w-16 rounded"></div></td>
+                <td><div className="skeleton h-4 w-24 rounded"></div></td>
+                <td style={{ textAlign: "right" }}><div className="skeleton h-4 w-20 rounded ml-auto"></div></td>
+                <td style={{ textAlign: "right" }}><div className="skeleton h-4 w-12 rounded ml-auto"></div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   if (transactions.length === 0) {
+    if (isFiltered) {
+      return (
+        <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-in">
+          <div
+            className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-xl"
+            style={{
+              backgroundColor: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              color: "var(--text-muted)",
+            }}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold m-0" style={{ color: "var(--text)" }}>
+            No transactions match your filters
+          </p>
+          <p className="mt-1 text-xs max-w-sm m-0 mb-4" style={{ color: "var(--text-muted)" }}>
+            Try broadening your search term, adjusting amount or date ranges, or resetting filters.
+          </p>
+          {onClearFilters && (
+            <button
+              onClick={onClearFilters}
+              className="btn-secondary text-xs py-2 px-3.5"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-in">
         <div
@@ -51,10 +153,10 @@ export default function TransactionTable({ transactions, refreshTransactions }) 
           </svg>
         </div>
         <p className="text-sm font-semibold m-0" style={{ color: "var(--text)" }}>
-          No transactions found
+          No transactions recorded yet
         </p>
         <p className="mt-1 text-xs max-w-xs m-0" style={{ color: "var(--text-muted)" }}>
-          Record a new transaction or adjust active search filters.
+          Record a new transaction to begin tracking your financial activity.
         </p>
       </div>
     );
@@ -66,11 +168,47 @@ export default function TransactionTable({ transactions, refreshTransactions }) 
         <table className="data-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Category</th>
-              <th>Type</th>
-              <th>Date</th>
-              <th style={{ textAlign: "right" }}>Amount</th>
+              <th
+                onClick={() => handleHeaderClick("title")}
+                className={`sort-col-header group ${sortBy === "title" ? "is-sorted" : ""}`}
+                title="Click to sort by Title"
+              >
+                <span>Title</span>
+                {renderSortIndicator("title")}
+              </th>
+
+              <th
+                onClick={() => handleHeaderClick("category")}
+                className={`sort-col-header group ${sortBy === "category" ? "is-sorted" : ""}`}
+                title="Click to sort by Category"
+              >
+                <span>Category</span>
+                {renderSortIndicator("category")}
+              </th>
+
+              <th>
+                <span>Type</span>
+              </th>
+
+              <th
+                onClick={() => handleHeaderClick("date")}
+                className={`sort-col-header group ${sortBy === "date" ? "is-sorted" : ""}`}
+                title="Click to sort by Date"
+              >
+                <span>Date</span>
+                {renderSortIndicator("date")}
+              </th>
+
+              <th
+                onClick={() => handleHeaderClick("amount")}
+                className={`sort-col-header group ${sortBy === "amount" ? "is-sorted" : ""}`}
+                style={{ textAlign: "right" }}
+                title="Click to sort by Amount"
+              >
+                <span>Amount</span>
+                {renderSortIndicator("amount")}
+              </th>
+
               <th style={{ textAlign: "right" }}>Actions</th>
             </tr>
           </thead>

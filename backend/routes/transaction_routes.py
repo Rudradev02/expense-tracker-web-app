@@ -7,23 +7,112 @@ from utils.auth import token_required
 transaction_bp = Blueprint("transaction_bp", __name__)
 
 
+from sqlalchemy import or_
+
 # GET all transactions
 @transaction_bp.route("/transactions", methods=["GET"])
 @token_required
 def get_transactions(current_user_id):
-    title = request.args.get("title")
-    category = request.args.get("category")
-
     query = Transaction.query.filter_by(user_id=current_user_id)
 
-    if title:
-        query = query.filter(Transaction.title.ilike(f"%{title}%"))
+    # 1. Search (matches title/description/notes)
+    search = (
+        request.args.get("search") or
+        request.args.get("title") or
+        request.args.get("q") or
+        ""
+    ).strip()
+    if search:
+        query = query.filter(Transaction.title.ilike(f"%{search}%"))
 
-    if category:
-        query = query.filter(Transaction.category.ilike(f"%{category}%"))
+    # 2. Type filter (income, expense, all)
+    tx_type = (request.args.get("type") or "").strip().lower()
+    if tx_type in ["income", "expense"]:
+        query = query.filter(Transaction.type.ilike(tx_type))
 
-    transactions = query.order_by(Transaction.date.desc()).all()
+    # 3. Category filter (multi-select: comma-separated or multiple args)
+    raw_list = request.args.getlist("category")
+    categories = []
+    for item in raw_list:
+        if item and item.strip():
+            for c in item.split(","):
+                if c.strip():
+                    categories.append(c.strip())
 
+    if not categories and request.args.get("category"):
+        raw_cats = request.args.get("category")
+        categories = [c.strip() for c in raw_cats.split(",") if c.strip()]
+
+    if categories:
+        query = query.filter(or_(*[Transaction.category.ilike(c) for c in categories]))
+
+    # 4. Date range filter (start_date, end_date)
+    start_date = request.args.get("start_date")
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date.strip(), "%Y-%m-%d")
+            query = query.filter(Transaction.date >= start_dt)
+        except (ValueError, TypeError):
+            pass
+
+    end_date = request.args.get("end_date")
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date.strip(), "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
+            query = query.filter(Transaction.date <= end_dt)
+        except (ValueError, TypeError):
+            pass
+
+    # 5. Min / Max amount filters
+    min_amount = request.args.get("min_amount")
+    if min_amount:
+        try:
+            query = query.filter(Transaction.amount >= float(min_amount))
+        except (ValueError, TypeError):
+            pass
+
+    max_amount = request.args.get("max_amount")
+    if max_amount:
+        try:
+            query = query.filter(Transaction.amount <= float(max_amount))
+        except (ValueError, TypeError):
+            pass
+
+    # 6. Sorting (date, amount, category, title)
+    sort_by = (request.args.get("sort_by") or "date").strip().lower()
+    sort_order = (request.args.get("sort_order") or "desc").strip().lower()
+
+    col_map = {
+        "date": Transaction.date,
+        "amount": Transaction.amount,
+        "category": Transaction.category,
+        "title": Transaction.title,
+    }
+    target_col = col_map.get(sort_by, Transaction.date)
+
+    if sort_order == "asc":
+        query = query.order_by(target_col.asc())
+    else:
+        query = query.order_by(target_col.desc())
+
+    # Optional pagination
+    page = request.args.get("page", type=int)
+    per_page = request.args.get("per_page", type=int)
+
+    if page and per_page and page > 0 and per_page > 0:
+        total = query.count()
+        transactions = query.offset((page - 1) * per_page).limit(per_page).all()
+        return jsonify({
+            "items": [t.to_dict() for t in transactions],
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": (total + per_page - 1) // per_page
+        })
+
+    transactions = query.all()
     return jsonify([t.to_dict() for t in transactions])
 
 

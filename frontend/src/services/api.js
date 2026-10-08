@@ -58,13 +58,15 @@ export const registerUser = async (username, email, password) => {
 export const getSummary = () => API.get("/summary");
 
 
-export const getTransactions = (title = "", category = "") =>
-  API.get("/transactions", {
-    params: {
-      title,
-      category,
-    },
-  });
+export const getTransactions = (paramsOrTitle = "", category = "") => {
+  if (typeof paramsOrTitle === "object" && paramsOrTitle !== null) {
+    return API.get("/transactions", { params: paramsOrTitle });
+  }
+  const params = {};
+  if (paramsOrTitle) params.title = paramsOrTitle;
+  if (category) params.category = category;
+  return API.get("/transactions", { params });
+};
 
 export const addTransaction = (transaction) =>
   API.post("/transactions", transaction);

@@ -24,7 +24,10 @@ export default function Dashboard() {
         getTransactions(),
       ]);
       setSummary(summaryRes.data);
-      setRecentTransactions(transRes.data.slice(0, 5));
+      const txData = Array.isArray(transRes.data)
+        ? transRes.data
+        : transRes.data?.items || [];
+      setRecentTransactions(txData.slice(0, 5));
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
       setError("Failed to load dashboard data. Please try again.");
