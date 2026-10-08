@@ -344,6 +344,49 @@ export default function AppShell({ children }) {
           );
         })}
       </nav>
+
+      {/* Global Command Palette */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onOpenAddTransaction={() => setShowAddModal(true)}
+      />
+
+      {/* Global Add Transaction Modal Overlay */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in"
+          style={{ backgroundColor: "rgba(11, 11, 12, 0.75)" }}
+          onClick={() => setShowAddModal(false)}
+        >
+          <div
+            className="w-full max-w-lg p-6 relative animate-slide-up"
+            style={{
+              backgroundColor: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "14px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="btn-icon absolute top-4 right-4"
+              aria-label="Close modal"
+            >
+              ✕
+            </button>
+            <TransactionForm
+              onSuccess={() => {
+                setShowAddModal(false);
+                triggerRefresh("dashboard");
+                triggerRefresh("transactions");
+                triggerRefresh("budgets");
+              }}
+              onCancel={() => setShowAddModal(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
