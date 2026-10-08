@@ -2,6 +2,7 @@ import { useState } from "react";
 import { deleteTransaction } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import TransactionForm from "./TransactionForm";
+import EmptyState from "./EmptyState";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -21,6 +22,8 @@ export default function TransactionTable({
   loading = false,
   onEdit,
   onDelete,
+  onOpenAdd,
+  onLoadSampleData,
 }) {
   const { triggerRefresh } = useAppRefresh();
   const [editingTransaction, setEditingTransaction] = useState(null);
@@ -117,58 +120,26 @@ export default function TransactionTable({
   if (transactions.length === 0) {
     if (isFiltered) {
       return (
-        <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-in">
-          <div
-            className="mb-3.5 flex h-12 w-12 items-center justify-center rounded-xl"
-            style={{
-              backgroundColor: "var(--surface-2)",
-              border: "1px solid var(--border)",
-              color: "var(--text-muted)",
-            }}
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-          </div>
-          <p className="text-sm font-semibold m-0" style={{ color: "var(--text)" }}>
-            No transactions match your filters
-          </p>
-          <p className="mt-1 text-xs max-w-sm m-0 mb-4" style={{ color: "var(--text-muted)" }}>
-            Try broadening your search term, adjusting amount or date ranges, or resetting filters.
-          </p>
-          {onClearFilters && (
-            <button
-              onClick={onClearFilters}
-              className="btn-secondary text-xs py-2 px-3.5"
-            >
-              Clear all filters
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon="search"
+          title="No transactions match your filters"
+          description="Try broadening your search term, adjusting amount or date ranges, or resetting filters."
+          actionLabel={onClearFilters ? "Clear all filters" : undefined}
+          onAction={onClearFilters}
+        />
       );
     }
 
     return (
-      <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-in">
-        <div
-          className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl"
-          style={{
-            backgroundColor: "var(--surface-2)",
-            border: "1px solid var(--border)",
-            color: "var(--text-muted)",
-          }}
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </div>
-        <p className="text-sm font-semibold m-0" style={{ color: "var(--text)" }}>
-          No transactions recorded yet
-        </p>
-        <p className="mt-1 text-xs max-w-xs m-0" style={{ color: "var(--text-muted)" }}>
-          Record a new transaction to begin tracking your financial activity.
-        </p>
-      </div>
+      <EmptyState
+        icon="transactions"
+        title="No transactions recorded yet"
+        description="Record a new transaction to begin tracking your financial activity, or load sample data to explore."
+        actionLabel={onOpenAdd ? "+ Add Transaction" : undefined}
+        onAction={onOpenAdd}
+        secondaryActionLabel={onLoadSampleData ? "Load Sample Data" : undefined}
+        onSecondaryAction={onLoadSampleData}
+      />
     );
   }
 

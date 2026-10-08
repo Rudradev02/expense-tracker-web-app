@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { getBudgetStatus, deleteBudget } from "../services/api";
+import { getBudgetStatus, deleteBudget, loadSampleData } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import BudgetModal from "../components/BudgetModal";
+import EmptyState from "../components/EmptyState";
 
 const formatINR = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
@@ -13,6 +14,23 @@ export default function BudgetsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [loadingSample, setLoadingSample] = useState(false);
+
+  const handleLoadSampleData = async () => {
+    try {
+      setLoadingSample(true);
+      await loadSampleData();
+      triggerRefresh("budgets");
+      triggerRefresh("dashboard");
+      triggerRefresh("transactions");
+      await fetchStatus();
+    } catch (err) {
+      console.error("Failed to load sample data:", err);
+      alert("Failed to load sample data.");
+    } finally {
+      setLoadingSample(false);
+    }
+  };
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -206,23 +224,18 @@ export default function BudgetsPage() {
             {error}
           </div>
         ) : budgeted.length === 0 ? (
-          <div className="py-10 text-center" style={{ color: "var(--text-muted)" }}>
-            <p className="text-xs font-medium" style={{ color: "var(--text)" }}>
-              No categories have monthly budgets yet.
-            </p>
-            <p className="text-[11px] mt-1 mb-4">
-              Allocate limits to prevent spending overruns.
-            </p>
-            <button
-              onClick={() => {
-                setSelectedBudget(null);
-                setModalOpen(true);
-              }}
-              className="btn-accent text-xs py-1.5 px-3"
-            >
-              + Create Budget
-            </button>
-          </div>
+          <EmptyState
+            icon="budgets"
+            title="No monthly budgets configured yet"
+            description="Allocate category spending limits to prevent overruns and track monthly budget health."
+            actionLabel="+ Create Budget"
+            onAction={() => {
+              setSelectedBudget(null);
+              setModalOpen(true);
+            }}
+            secondaryActionLabel={loadingSample ? "Loading..." : "Load Sample Data"}
+            onSecondaryAction={handleLoadSampleData}
+          />
         ) : (
           <div className="space-y-4">
             {budgeted.map((item) => {

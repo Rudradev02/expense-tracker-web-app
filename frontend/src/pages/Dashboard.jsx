@@ -1,12 +1,21 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getSummary, getTransactions, deleteTransaction } from "../services/api";
+import {
+  getSummary,
+  getTransactions,
+  deleteTransaction,
+  getCategories,
+  getBudgets,
+  loadSampleData,
+} from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import SummaryCard from "../components/SummaryCard";
 import ExpenseCharts from "../components/ExpenseCharts";
 import TransactionForm from "../components/TransactionForm";
 import BudgetWidget from "../components/BudgetWidget";
 import InsightsCard from "../components/InsightsCard";
+import OnboardingChecklist from "../components/OnboardingChecklist";
+import EmptyState from "../components/EmptyState";
 
 const RANGE_PRESETS = [
   { id: "this_month", label: "This month" },
@@ -130,6 +139,12 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalTransaction, setModalTransaction] = useState(null);
+
+  // Onboarding counts & sample data state
+  const [categoriesCount, setCategoriesCount] = useState(0);
+  const [budgetsCount, setBudgetsCount] = useState(0);
+  const [totalTxCount, setTotalTxCount] = useState(0);
+  const [loadingSample, setLoadingSample] = useState(false);
 
   // Date range switcher state & localStorage persistence
   const [selectedPreset, setSelectedPreset] = useState(() => {
@@ -284,15 +299,20 @@ export default function Dashboard() {
         setLoading(true);
       }
       setError(null);
-      const [summaryRes, transRes] = await Promise.all([
+      const [summaryRes, transRes, catRes, budgetRes] = await Promise.all([
         getSummary(activeDates),
         getTransactions(),
+        getCategories().catch(() => ({ data: [] })),
+        getBudgets().catch(() => ({ data: [] })),
       ]);
       setSummary(summaryRes.data);
       const txData = Array.isArray(transRes.data)
         ? transRes.data
         : transRes.data?.items || [];
       setRecentTransactions(txData.slice(0, 5));
+      setTotalTxCount(txData.length);
+      setCategoriesCount(Array.isArray(catRes.data) ? catRes.data.length : 0);
+      setBudgetsCount(Array.isArray(budgetRes.data) ? budgetRes.data.length : 0);
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
       setError("Failed to load dashboard data. Please try again.");
@@ -301,6 +321,23 @@ export default function Dashboard() {
       setIsRefetching(false);
     }
   }, [activeDates]);
+
+  const handleLoadSampleData = useCallback(async () => {
+    try {
+      setLoadingSample(true);
+      await loadSampleData();
+      triggerRefresh("dashboard");
+      triggerRefresh("transactions");
+      triggerRefresh("budgets");
+      triggerRefresh("categories");
+      await fetchDashboardData(true);
+    } catch (err) {
+      console.error("Failed to load sample data:", err);
+      setError("Failed to load sample data. Please try again.");
+    } finally {
+      setLoadingSample(false);
+    }
+  }, [triggerRefresh, fetchDashboardData]);
 
   const isInitialMount = useRef(true);
   useEffect(() => {
@@ -435,7 +472,7 @@ export default function Dashboard() {
     );
   }
 
-  const transactionCount = recentTransactions.length;
+  const transactionCount = totalTxCount || recentTransactions.length;
 
   return (
     <div className="space-y-6">
@@ -670,6 +707,19 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* First-Run Onboarding Checklist */}
+      <OnboardingChecklist
+        categoriesCount={categoriesCount}
+        transactionsCount={totalTxCount || recentTransactions.length}
+        budgetsCount={budgetsCount}
+        onAddTransaction={() => {
+          setModalTransaction(null);
+          setShowModal(true);
+        }}
+        onLoadSampleData={handleLoadSampleData}
+        loadingSample={loadingSample}
+      />
+
       {/* Hero Stat Cards Row: Current Balance (Hero) + Income + Expenses */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-5">
         {/* Current Balance - Hero Card */}
@@ -719,6 +769,10 @@ export default function Dashboard() {
         expenseByCategory={summary?.expense_by_category}
         monthlyTrends={summary?.monthly_trends}
         loading={isRefetching}
+        onAddTransaction={() => {
+          setModalTransaction(null);
+          setShowModal(true);
+        }}
       />
 
 
@@ -757,11 +811,18 @@ export default function Dashboard() {
         </div>
 
         {recentTransactions.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              No transactions recorded yet.
-            </p>
-          </div>
+          <EmptyState
+            icon="transactions"
+            title="No transactions recorded yet"
+            description="Your recent financial activity will appear here once you record your first income or expense."
+            actionLabel="+ Add Transaction"
+            onAction={() => {
+              setModalTransaction(null);
+              setShowModal(true);
+            }}
+            secondaryActionLabel="Load Sample Data"
+            onSecondaryAction={handleLoadSampleData}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">

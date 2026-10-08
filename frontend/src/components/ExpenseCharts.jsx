@@ -12,6 +12,7 @@ import {
   Tooltip as LineTooltip,
   ResponsiveContainer,
 } from "recharts";
+import EmptyState from "./EmptyState";
 
 // Obsidian & Champagne Muted Color Palette
 const DONUT_PALETTE = [
@@ -85,7 +86,12 @@ function CustomChartTooltip({ active, payload, label }) {
   );
 }
 
-export default function ExpenseCharts({ expenseByCategory, monthlyTrends, loading = false }) {
+export default function ExpenseCharts({
+  expenseByCategory,
+  monthlyTrends,
+  loading = false,
+  onAddTransaction,
+}) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -139,10 +145,10 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends, loadin
         </div>
 
         <div className="h-72 relative">
-          {validExpenses.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              {validExpenses.length > 0 ? (
+                <>
                   <Pie
                     data={validExpenses}
                     cx="50%"
@@ -172,18 +178,36 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends, loadin
                       color: "var(--text-muted)",
                     }}
                   />
-                </PieChart>
-              </ResponsiveContainer>
+                </>
+              ) : (
+                <Pie
+                  data={[{ name: "No data", value: 1 }]}
+                  cx="50%"
+                  cy="45%"
+                  innerRadius={74}
+                  outerRadius={88}
+                  dataKey="value"
+                  stroke="var(--border)"
+                  strokeWidth={1}
+                  isAnimationActive={false}
+                >
+                  <Cell fill="var(--surface-2)" />
+                </Pie>
+              )}
+            </PieChart>
+          </ResponsiveContainer>
 
-              {/* Centered Total metric (Fixed: No SVG clipping overflow bug) */}
-              <div
-                className="absolute pointer-events-none flex flex-col items-center justify-center text-center"
-                style={{
-                  top: "45%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                }}
-              >
+          {/* Centered Total metric or Neutral Ring No Data Indicator */}
+          <div
+            className="absolute pointer-events-none flex flex-col items-center justify-center text-center"
+            style={{
+              top: "45%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            {validExpenses.length > 0 ? (
+              <>
                 <span
                   className="text-[10px] font-semibold uppercase tracking-wider block"
                   style={{ color: "var(--text-muted)", letterSpacing: "0.08em" }}
@@ -200,32 +224,40 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends, loadin
                 >
                   {formatINR(totalExpense)}
                 </span>
-              </div>
-            </>
-          ) : (
-            <div
-              className="flex h-full flex-col items-center justify-center text-center p-6"
-              style={{ color: "var(--text-muted)" }}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center mb-3 text-xs"
-                style={{
-                  backgroundColor: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-muted)",
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                </svg>
-              </div>
-              <p className="text-xs font-medium" style={{ color: "var(--text)" }}>
-                No expense data recorded
-              </p>
-              <p className="text-[11px] mt-1 max-w-xs" style={{ color: "var(--text-muted)" }}>
-                Category breakdown will appear here once expenses are logged.
-              </p>
+              </>
+            ) : (
+              <>
+                <span
+                  className="text-xs font-semibold tracking-tight block"
+                  style={{ color: "var(--text)" }}
+                >
+                  No data yet
+                </span>
+                <span
+                  className="text-[10px] block mt-0.5"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  ₹0 expenses
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Bottom helper row when no expenses */}
+          {validExpenses.length === 0 && (
+            <div className="absolute bottom-1 inset-x-0 flex flex-col items-center justify-center text-center gap-1.5 pointer-events-auto">
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                Log expenses to view categorized spending distribution.
+              </span>
+              {onAddTransaction && (
+                <button
+                  type="button"
+                  onClick={onAddTransaction}
+                  className="btn-outline text-[11px] py-1 px-2.5 cursor-pointer"
+                >
+                  + Add Expense
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -319,29 +351,15 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends, loadin
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div
-              className="flex h-full flex-col items-center justify-center text-center p-6"
-              style={{ color: "var(--text-muted)" }}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center mb-3 text-xs"
-                style={{
-                  backgroundColor: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-muted)",
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-              </div>
-              <p className="text-xs font-medium" style={{ color: "var(--text)" }}>
-                No trend data available
-              </p>
-              <p className="text-[11px] mt-1 max-w-xs" style={{ color: "var(--text-muted)" }}>
-                Monthly cashflow trajectory will render once transactions are recorded.
-              </p>
-            </div>
+            <EmptyState
+              icon="charts"
+              title="No trend data available"
+              description="Monthly trajectory will display once you record income and expenses."
+              actionLabel={onAddTransaction ? "+ Add Transaction" : undefined}
+              onAction={onAddTransaction}
+              compact={true}
+              className="h-full justify-center"
+            />
           )}
         </div>
       </div>

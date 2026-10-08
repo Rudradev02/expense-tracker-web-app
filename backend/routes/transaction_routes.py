@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, Response
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import db
 from models import Transaction, Budget
 from utils.auth import token_required
@@ -755,4 +755,58 @@ def get_insights(current_user_id):
         "insights": insights[:4],
         "has_data": len(insights) > 0,
         "month_name": now.strftime("%B %Y")
-    })
+    })
+
+
+# LOAD SAMPLE DATA
+@transaction_bp.route("/transactions/sample-data", methods=["POST"])
+@token_required
+def load_sample_data(current_user_id):
+    today = datetime.now()
+
+    sample_txs = [
+        {"title": "Tech Consulting Salary", "amount": 95000.0, "category": "Salary", "type": "income", "days_ago": 5},
+        {"title": "Freelance Design Retainer", "amount": 35000.0, "category": "Salary", "type": "income", "days_ago": 18},
+        {"title": "Whole Foods Market", "amount": 6200.0, "category": "Food", "type": "expense", "days_ago": 2},
+        {"title": "City Metro Transit Pass", "amount": 2400.0, "category": "Transport", "type": "expense", "days_ago": 6},
+        {"title": "High-Speed Fiber Internet", "amount": 1599.0, "category": "Bills", "type": "expense", "days_ago": 8},
+        {"title": "Weekend Artisanal Dinner", "amount": 3800.0, "category": "Food", "type": "expense", "days_ago": 12},
+        {"title": "Nordic Books & Stationery", "amount": 1850.0, "category": "Shopping", "type": "expense", "days_ago": 15},
+        {"title": "Electric & Gas Utility", "amount": 3200.0, "category": "Bills", "type": "expense", "days_ago": 20},
+    ]
+
+    created_txs = []
+    for st in sample_txs:
+        tx_date = today - timedelta(days=st["days_ago"])
+        tx = Transaction(
+            title=st["title"],
+            amount=st["amount"],
+            category=st["category"],
+            type=st["type"],
+            date=tx_date,
+            user_id=current_user_id
+        )
+        db.session.add(tx)
+        created_txs.append(tx)
+
+    # Insert sample budgets if user has no budgets yet
+    existing_budgets = Budget.query.filter_by(user_id=current_user_id).count()
+    if existing_budgets == 0:
+        sample_budgets = [
+            {"category": "Food", "monthly_limit": 15000.0},
+            {"category": "Bills", "monthly_limit": 10000.0},
+            {"category": "Shopping", "monthly_limit": 8000.0},
+        ]
+        for sb in sample_budgets:
+            b = Budget(
+                category=sb["category"],
+                monthly_limit=sb["monthly_limit"],
+                user_id=current_user_id
+            )
+            db.session.add(b)
+
+    db.session.commit()
+    return jsonify({
+        "message": "Sample transactions and budgets loaded successfully",
+        "transactions_created": len(created_txs)
+    }), 201

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getBudgetStatus } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import BudgetModal from "./BudgetModal";
+import EmptyState from "./EmptyState";
 
 const formatINR = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
@@ -155,35 +156,15 @@ export default function BudgetWidget({ showViewAllLink = true, limitDisplay = nu
           </div>
         </div>
 
-        {budgetedItems.length === 0 && allItems.length === 0 ? (
-          <div className="text-center py-8" style={{ color: "var(--text-muted)" }}>
-            <p className="text-xs m-0">No categories found in system.</p>
-          </div>
-        ) : budgetedItems.length === 0 ? (
-          <div className="text-center py-8" style={{ color: "var(--text-muted)" }}>
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 text-xs"
-              style={{
-                backgroundColor: "var(--surface-2)",
-                border: "1px solid var(--border)",
-                color: "var(--text-muted)",
-              }}
-            >
-              ₹
-            </div>
-            <p className="text-xs font-medium m-0" style={{ color: "var(--text)" }}>
-              No monthly budgets configured yet
-            </p>
-            <p className="text-[11px] mt-1 mb-4" style={{ color: "var(--text-muted)" }}>
-              Set caps on category spending to monitor monthly budget health.
-            </p>
-            <button
-              onClick={handleOpenAdd}
-              className="btn-outline text-xs py-1.5 px-3"
-            >
-              Set First Budget
-            </button>
-          </div>
+        {budgetedItems.length === 0 ? (
+          <EmptyState
+            icon="budgets"
+            title="No monthly budgets configured yet"
+            description="Set caps on category spending to monitor monthly budget health."
+            actionLabel="+ Set First Budget"
+            onAction={handleOpenAdd}
+            compact={true}
+          />
         ) : (
           <div className="space-y-4">
             {displayItems.map((item) => {

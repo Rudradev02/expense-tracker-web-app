@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { getTransactions, deleteTransaction, exportTransactions } from "../services/api";
+import {
+  getTransactions,
+  deleteTransaction,
+  exportTransactions,
+  loadSampleData,
+} from "../services/api";
 
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
@@ -250,6 +255,21 @@ export default function Transactions() {
     urlSortBy,
     urlSortOrder,
   ]);
+
+  const handleLoadSampleData = useCallback(async () => {
+    try {
+      setLoading(true);
+      await loadSampleData();
+      triggerRefresh("dashboard");
+      triggerRefresh("transactions");
+      triggerRefresh("budgets");
+      await fetchTransactions();
+    } catch (err) {
+      console.error("Failed to load sample data:", err);
+      setError("Failed to load sample data. Please try again.");
+      setLoading(false);
+    }
+  }, [triggerRefresh, fetchTransactions]);
 
   useEffect(() => {
     fetchTransactions();
@@ -935,6 +955,11 @@ export default function Transactions() {
             setShowModal(true);
           }}
           onDelete={handleInitiateDelete}
+          onOpenAdd={() => {
+            setModalTransaction(null);
+            setShowModal(true);
+          }}
+          onLoadSampleData={handleLoadSampleData}
         />
       </section>
 

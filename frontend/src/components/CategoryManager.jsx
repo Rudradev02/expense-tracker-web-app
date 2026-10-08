@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { addCategory, deleteCategory } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import EmptyState from "./EmptyState";
 
 export default function CategoryManager() {
   const { categories, refreshCategories } = useCategories();
@@ -10,6 +11,7 @@ export default function CategoryManager() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const inputRef = useRef(null);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -100,7 +102,7 @@ export default function CategoryManager() {
               className="px-2.5 py-1 rounded text-xs font-semibold cursor-pointer transition-colors"
               style={{
                 backgroundColor: "var(--expense)",
-                color: "#fff",
+                color: "var(--bg)",
                 border: "none",
               }}
             >
@@ -112,6 +114,7 @@ export default function CategoryManager() {
 
       <form onSubmit={handleAdd} className="mb-4 flex gap-2">
         <input
+          ref={inputRef}
           type="text"
           placeholder="New category label..."
           className="input-field flex-1"
@@ -139,9 +142,14 @@ export default function CategoryManager() {
       )}
 
       {categories.length === 0 ? (
-        <p className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>
-          No categories recorded yet. Add your first above.
-        </p>
+        <EmptyState
+          icon="categories"
+          title="No categories recorded yet"
+          description="Create custom categories to organize your expenses into personal spending streams."
+          actionLabel="+ Add Category"
+          onAction={() => inputRef.current?.focus()}
+          compact={true}
+        />
       ) : (
         <ul className="max-h-56 space-y-2 overflow-y-auto list-none p-0 m-0">
           {categories.map((cat) => (
