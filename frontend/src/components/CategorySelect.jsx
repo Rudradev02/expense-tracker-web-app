@@ -36,7 +36,7 @@ export default function CategorySelect({ id, value, onChange, required = true })
         </option>
       )}
       {hasOrphan && (
-        <option value={value}>{value} (legacy)</option>
+        <option value={value}>{value}</option>
       )}
       {categories.map((cat) => (
         <option key={cat.id} value={cat.name}>

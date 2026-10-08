@@ -1,8 +1,40 @@
-import { useState, useEffect, useCallback } from "react";
-import { addTransaction, updateTransaction, getSummary } from "../services/api";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { addTransaction, updateTransaction, getSummary, suggestCategory } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import CategorySelect from "./CategorySelect";
+
+const OVERRIDES_STORAGE_KEY = "expense_tracker_category_overrides";
+
+function getLocalCategoryOverride(description) {
+  if (!description) return null;
+  try {
+    const raw = localStorage.getItem(OVERRIDES_STORAGE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    const key = description.trim().toLowerCase();
+    if (map[key]) return map[key];
+    for (const [merchant, cat] of Object.entries(map)) {
+      if (key.includes(merchant) || merchant.includes(key)) {
+        return cat;
+      }
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+function saveLocalCategoryOverride(description, categoryName) {
+  if (!description || !categoryName) return;
+  try {
+    const raw = localStorage.getItem(OVERRIDES_STORAGE_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    const key = description.trim().toLowerCase();
+    map[key] = categoryName;
+    localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(map));
+  } catch (e) {}
+}
 
 export default function TransactionForm({ transaction = null, onSuccess, onCancel }) {
   const { categories } = useCategories();
@@ -16,6 +48,14 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [spent, setSpent] = useState(0);
+
+  // Auto-suggestion state
+  const [suggestedCategory, setSuggestedCategory] = useState(null);
+  const [suggestionConfidence, setSuggestionConfidence] = useState(0);
+  const [suggestionSource, setSuggestionSource] = useState(null);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isUserOverridden, setIsUserOverridden] = useState(false);
+  const titleTouchedRef = useRef(false);
 
   // Recurring options for new transactions
   const [isRecurring, setIsRecurring] = useState(false);
@@ -31,6 +71,8 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       setCategory(transaction.category || "");
       setType(transaction.type || "expense");
       setIsRecurring(Boolean(transaction.is_recurring));
+      setIsUserOverridden(true);
+      titleTouchedRef.current = false;
     } else {
       setTitle("");
       setAmount("");
@@ -39,8 +81,105 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       setIsRecurring(false);
       setFrequency("monthly");
       setEndDate("");
+      setSuggestedCategory(null);
+      setSuggestionConfidence(0);
+      setSuggestionSource(null);
+      setIsUserOverridden(false);
+      titleTouchedRef.current = false;
     }
   }, [transaction]);
+
+  // Debounced auto-suggestion when title changes
+  useEffect(() => {
+    const trimmedTitle = title.trim();
+
+    // If editing and user hasn't actively edited title, do not auto-suggest
+    if (isEditing && !titleTouchedRef.current) {
+      return;
+    }
+
+    if (trimmedTitle.length < 2) {
+      setSuggestedCategory(null);
+      setSuggestionConfidence(0);
+      setSuggestionSource(null);
+      return;
+    }
+
+    // 1. Instant local override check (remembers user's previous overrides)
+    const localOverride = getLocalCategoryOverride(trimmedTitle);
+    if (localOverride) {
+      setSuggestedCategory(localOverride);
+      setSuggestionConfidence(0.99);
+      setSuggestionSource("saved_preference");
+      if (!isUserOverridden) {
+        setCategory(localOverride);
+      }
+      return;
+    }
+
+    // 2. Debounced backend API lookup
+    let isCancelled = false;
+    setIsSuggesting(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await suggestCategory(trimmedTitle);
+        if (isCancelled) return;
+
+        const candidate = res.data?.suggested_category;
+        const conf = res.data?.confidence || 0;
+        const source = res.data?.source || null;
+
+        if (candidate) {
+          setSuggestedCategory(candidate);
+          setSuggestionConfidence(conf);
+          setSuggestionSource(source);
+
+          if (!isUserOverridden) {
+            setCategory(candidate);
+          }
+        } else {
+          setSuggestedCategory(null);
+          setSuggestionConfidence(0);
+          setSuggestionSource(null);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setSuggestedCategory(null);
+          setSuggestionConfidence(0);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsSuggesting(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [title, isEditing, isUserOverridden]);
+
+  const handleTitleChange = (e) => {
+    titleTouchedRef.current = true;
+    setTitle(e.target.value);
+    // If the category was previously auto-suggested or empty, reset override flag so new suggestion applies
+    if (!category || category === suggestedCategory) {
+      setIsUserOverridden(false);
+    }
+  };
+
+  const handleCategoryChange = (e) => {
+    const selected = e.target.value;
+    setCategory(selected);
+    setIsUserOverridden(true);
+
+    // When the user overrides or manually chooses a category, remember that choice for next time!
+    if (title.trim()) {
+      saveLocalCategoryOverride(title.trim(), selected);
+    }
+  };
 
   const fetchBudgetStatus = useCallback(async () => {
     try {
@@ -76,6 +215,11 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         payload.is_recurring = true;
         payload.frequency = frequency;
         if (endDate) payload.end_date = endDate;
+      }
+
+      // Remember merchant-to-category choice for future suggestions
+      if (title.trim() && category) {
+        saveLocalCategoryOverride(title.trim(), category);
       }
 
       let res;
@@ -117,13 +261,17 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         setIsRecurring(false);
         setFrequency("monthly");
         setEndDate("");
+        setSuggestedCategory(null);
+        setSuggestionConfidence(0);
+        setSuggestionSource(null);
+        setIsUserOverridden(false);
+        titleTouchedRef.current = false;
       }
 
       if (onSuccess) {
         setTimeout(onSuccess, 600);
       }
     } catch (error) {
-
       console.error(error);
       showToast(
         "error",
@@ -166,15 +314,15 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="tx-form-title" className="form-label">
-            Title
+            Title / Description
           </label>
           <input
             id="tx-form-title"
             type="text"
-            placeholder="e.g. Consulting retainer, groceries..."
+            placeholder="e.g. Swiggy lunch, Uber ride, Netflix, consulting retainer..."
             className="input-field"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={handleTitleChange}
             required
           />
         </div>
@@ -214,14 +362,73 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         </div>
 
         <div>
-          <label htmlFor="tx-form-category" className="form-label">
-            Category
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="tx-form-category" className="form-label mb-0">
+              Category
+            </label>
+
+            {/* Subtle Suggested badge when current category was auto-suggested */}
+            {suggestedCategory && category === suggestedCategory && (
+              <span
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1.5 transition-all animate-fade-in"
+                style={{
+                  backgroundColor: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--accent)",
+                }}
+                title={
+                  suggestionSource === "history" || suggestionSource === "saved_preference"
+                    ? "Suggested from your past preferences"
+                    : `Suggested by keyword match (${Math.round(suggestionConfidence * 100)}% confidence)`
+                }
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full inline-block"
+                  style={{ backgroundColor: "var(--accent)" }}
+                />
+                <span>Suggested</span>
+              </span>
+            )}
+
+            {isSuggesting && !suggestedCategory && (
+              <span
+                className="text-[10px] font-normal"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Suggesting...
+              </span>
+            )}
+          </div>
+
           <CategorySelect
             id="tx-form-category"
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={handleCategoryChange}
           />
+
+          {/* User override indicator with option to revert */}
+          {suggestedCategory && category !== suggestedCategory && (
+            <div
+              className="text-[11px] mt-1.5 flex items-center justify-between animate-fade-in"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <span>
+                Suggested was{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategory(suggestedCategory);
+                    setIsUserOverridden(false);
+                  }}
+                  className="underline hover:opacity-80 cursor-pointer font-medium"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {suggestedCategory}
+                </button>
+              </span>
+              <span className="text-[10px] opacity-75">Preference remembered</span>
+            </div>
+          )}
         </div>
 
         {/* Option to mark as recurring (for new transactions) */}

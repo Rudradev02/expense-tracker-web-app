@@ -43,6 +43,10 @@ export default defineConfig({
         target: backendTarget,
         changeOrigin: true,
       },
+      '/suggest-category': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
       '/api': {
         target: backendTarget,
         changeOrigin: true,
