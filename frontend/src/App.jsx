@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import { CategoriesProvider } from "./context/CategoriesContext";
 import { AppRefreshProvider } from "./context/AppRefreshContext";
 import { DarkModeProvider } from "./context/DarkModeContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -31,7 +32,8 @@ function App() {
     <DarkModeProvider>
       <AppRefreshProvider>
         <CategoriesProvider>
-          <Routes>
+          <CurrencyProvider>
+            <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -85,7 +87,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-
+          </CurrencyProvider>
         </CategoriesProvider>
       </AppRefreshProvider>
     </DarkModeProvider>

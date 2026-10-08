@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-
-const formatINR = (value) => `₹${Math.round(Number(value || 0)).toLocaleString("en-IN")}`;
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function ForecastCard({
   forecast,
@@ -8,6 +7,8 @@ export default function ForecastCard({
   error = null,
   onRetry,
 }) {
+  const { formatCurrency } = useCurrency();
+  const formatINR = (val) => formatCurrency(Math.round(Number(val || 0)));
   const [showTooltip, setShowTooltip] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const tooltipRef = useRef(null);

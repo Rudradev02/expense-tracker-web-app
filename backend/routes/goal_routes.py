@@ -41,19 +41,24 @@ def enrich_goal(goal):
 
     days_left = (target_date - today).days if target_date else 0
 
+    curr_symbol = "₹"
+    if hasattr(goal, "user") and goal.user and getattr(goal.user, "base_currency", None):
+        symbols = {"INR": "₹", "USD": "$", "EUR": "€", "GBP": "£"}
+        curr_symbol = symbols.get(goal.user.base_currency, "₹")
+
     # Calculate required monthly saving to hit target_date
     if is_completed:
         required_monthly = 0.0
         monthly_text = "Goal accomplished"
     elif days_left <= 0:
         required_monthly = remaining
-        monthly_text = f"Save ₹{int(remaining):,} (past due)" if remaining > 0 else "Goal accomplished"
+        monthly_text = f"Save {curr_symbol}{int(remaining):,} (past due)" if remaining > 0 else "Goal accomplished"
     else:
         # Average days per month is ~30.44
         months_left = max(days_left / 30.4375, 1.0)
         required_monthly = round(remaining / months_left, 2)
         # Format user-friendly string e.g. "Save ₹5,000/month"
-        monthly_text = f"Save ₹{int(round(required_monthly)):,}/month"
+        monthly_text = f"Save {curr_symbol}{int(round(required_monthly)):,}/month"
 
     g_dict.update({
         "percentage": percentage,

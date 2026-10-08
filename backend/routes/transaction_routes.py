@@ -206,9 +206,41 @@ def add_transaction(current_user_id):
         except (ValueError, TypeError):
             pass
 
+    # Multi-currency conversion & storage
+    from models import User
+    from utils.currency_service import get_supported_currency_codes, convert_amount, get_cached_exchange_rates
+
+    user = User.query.get(current_user_id)
+    base_currency = (user.base_currency if user and user.base_currency else "INR").upper()
+
+    tx_currency = str(data.get("currency") or base_currency).upper().strip()
+    if tx_currency not in get_supported_currency_codes():
+        tx_currency = base_currency
+
+    input_amount = float(data["amount"])
+    custom_rate = data.get("exchange_rate")
+    rates_to_inr, _, _, _ = get_cached_exchange_rates()
+
+    if tx_currency == base_currency:
+        original_amount = input_amount
+        exchange_rate = 1.0
+        base_amount = input_amount
+    else:
+        original_amount = input_amount
+        if custom_rate and float(custom_rate) > 0:
+            exchange_rate = float(custom_rate)
+            base_amount = round(original_amount * exchange_rate, 2)
+        else:
+            base_amount, exchange_rate = convert_amount(
+                original_amount, tx_currency, base_currency, rates_to_inr
+            )
+
     transaction = Transaction(
         title=data["title"],
-        amount=data["amount"],
+        amount=base_amount,
+        currency=tx_currency,
+        original_amount=original_amount,
+        exchange_rate=exchange_rate,
         category=data["category"],
         type=data["type"],
         date=tx_date,
@@ -333,14 +365,46 @@ def update_transaction(current_user_id, id):
             return jsonify({"error": "Title cannot be empty"}), 400
         transaction.title = title
 
-    if "amount" in data:
-        try:
-            amt = float(data["amount"])
-            if amt <= 0:
-                return jsonify({"error": "Amount must be greater than zero"}), 400
-            transaction.amount = amt
-        except (ValueError, TypeError):
-            return jsonify({"error": "Amount must be a valid positive number"}), 400
+    # Multi-currency update handling
+    if "currency" in data or "amount" in data or "exchange_rate" in data:
+        from models import User
+        from utils.currency_service import get_supported_currency_codes, convert_amount, get_cached_exchange_rates
+
+        user = User.query.get(current_user_id)
+        base_currency = (user.base_currency if user and user.base_currency else "INR").upper()
+
+        curr = str(data.get("currency") or transaction.currency or base_currency).upper().strip()
+        if curr not in get_supported_currency_codes():
+            curr = base_currency
+
+        if "amount" in data:
+            try:
+                orig_amt = float(data["amount"])
+                if orig_amt <= 0:
+                    return jsonify({"error": "Amount must be greater than zero"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"error": "Amount must be a valid positive number"}), 400
+        else:
+            orig_amt = float(transaction.original_amount or transaction.amount)
+
+        custom_rate = data.get("exchange_rate")
+        rates_to_inr, _, _, _ = get_cached_exchange_rates()
+
+        if curr == base_currency:
+            transaction.currency = curr
+            transaction.original_amount = orig_amt
+            transaction.exchange_rate = 1.0
+            transaction.amount = orig_amt
+        else:
+            if custom_rate and float(custom_rate) > 0:
+                rate = float(custom_rate)
+                converted_base = round(orig_amt * rate, 2)
+            else:
+                converted_base, rate = convert_amount(orig_amt, curr, base_currency, rates_to_inr)
+            transaction.currency = curr
+            transaction.original_amount = orig_amt
+            transaction.exchange_rate = rate
+            transaction.amount = converted_base
 
     if "type" in data:
         t_type = str(data["type"]).strip().lower()

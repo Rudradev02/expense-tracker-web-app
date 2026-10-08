@@ -4,7 +4,9 @@ import DarkModeToggle from "../DarkModeToggle";
 import CommandPalette from "../CommandPalette";
 import InstallAppButton from "../InstallAppButton";
 import TransactionForm from "../TransactionForm";
+import CurrencySelector from "../CurrencySelector";
 import { useAppRefresh } from "../../context/AppRefreshContext";
+import { useCurrency } from "../../context/CurrencyContext";
 import { logoutUser } from "../../services/api";
 
 function getUserInitials(name) {
@@ -20,6 +22,7 @@ export default function AppShell({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { triggerRefresh } = useAppRefresh();
+  const { activeCurrencyInfo } = useCurrency();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -141,7 +144,7 @@ export default function AppShell({ children }) {
                   color: "var(--accent)",
                 }}
               >
-                ₹
+                {activeCurrencyInfo?.symbol || "₹"}
               </div>
               <div className="flex flex-col">
                 <span
@@ -320,6 +323,8 @@ export default function AppShell({ children }) {
             </button>
 
             <InstallAppButton variant="header" />
+
+            <CurrencySelector />
 
             <DarkModeToggle />
 

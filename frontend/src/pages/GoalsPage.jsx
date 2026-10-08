@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { getGoals, deleteGoal } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 import GoalModal from "../components/GoalModal";
 import ContributeModal from "../components/ContributeModal";
 import EmptyState from "../components/EmptyState";
 
-const formatINR = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
-
 export default function GoalsPage() {
   const { refreshKeys, triggerRefresh } = useAppRefresh();
+  const { formatCurrency } = useCurrency();
+  const formatINR = formatCurrency;
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -405,7 +406,7 @@ export default function GoalsPage() {
                             : "var(--accent)",
                         }}
                       >
-                        {goal.monthly_saving_text || `Save ₹${int(goal.required_monthly_saving)}/month`}
+                        {goal.monthly_saving_text || `Save ${formatCurrency(goal.required_monthly_saving)}/month`}
                       </span>
                     </div>
                   </div>

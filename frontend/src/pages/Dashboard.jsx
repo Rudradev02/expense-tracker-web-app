@@ -10,6 +10,7 @@ import {
   getForecast,
 } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 import SummaryCard from "../components/SummaryCard";
 import ExpenseCharts from "../components/ExpenseCharts";
 import TransactionForm from "../components/TransactionForm";
@@ -134,6 +135,7 @@ function calculatePresetDates(preset, customStart, customEnd) {
 
 export default function Dashboard() {
   const { refreshKeys, triggerRefresh } = useAppRefresh();
+  const { formatCurrency, baseCurrency } = useCurrency();
   const [summary, setSummary] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -909,7 +911,21 @@ export default function Dashboard() {
                           fontVariantNumeric: "tabular-nums",
                         }}
                       >
-                        {isIncome ? "+" : "-"}₹{Number(tx.amount).toLocaleString("en-IN")}
+                        <div>
+                          <span>
+                            {isIncome ? "+" : "-"}{formatCurrency(tx.amount)}
+                          </span>
+                          {tx.currency && tx.currency !== baseCurrency && (
+                            <div className="text-[10px] opacity-75" style={{ color: "var(--text-muted)" }}>
+                              {formatCurrency(
+                                tx.original_amount !== undefined && tx.original_amount !== null
+                                  ? tx.original_amount
+                                  : tx.amount,
+                                tx.currency
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td style={{ textAlign: "right" }}>
                         <div className="table-row-actions">

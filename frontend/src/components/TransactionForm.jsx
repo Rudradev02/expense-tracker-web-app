@@ -8,6 +8,7 @@ import {
 } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 import CategorySelect from "./CategorySelect";
 
 const OVERRIDES_STORAGE_KEY = "expense_tracker_category_overrides";
@@ -45,10 +46,20 @@ function saveLocalCategoryOverride(description, categoryName) {
 export default function TransactionForm({ transaction = null, onSuccess, onCancel }) {
   const { categories } = useCategories();
   const { triggerRefresh, refreshKeys } = useAppRefresh();
+  const { baseCurrency, currencies, getExchangeRate, formatCurrency } = useCurrency();
   const isEditing = Boolean(transaction);
 
   const [title, setTitle] = useState(transaction?.title || "");
-  const [amount, setAmount] = useState(transaction?.amount ?? "");
+  const [currencyCode, setCurrencyCode] = useState(
+    () => transaction?.currency || baseCurrency || "INR"
+  );
+  const [amount, setAmount] = useState(
+    transaction?.original_amount ?? transaction?.amount ?? ""
+  );
+  const [customRate, setCustomRate] = useState(
+    transaction?.exchange_rate ? String(transaction.exchange_rate) : ""
+  );
+  const [showRateInput, setShowRateInput] = useState(false);
   const [category, setCategory] = useState(transaction?.category || "");
   const [type, setType] = useState(transaction?.type || "expense");
   const [date, setDate] = useState(() => {
@@ -63,7 +74,6 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
   const [suggestedCategory, setSuggestedCategory] = useState(null);
   const [suggestionConfidence, setSuggestionConfidence] = useState(0);
   const [suggestionSource, setSuggestionSource] = useState(null);
-  const [isSuggesting, setIsSuggesting] = useState(false);
   const [isUserOverridden, setIsUserOverridden] = useState(false);
   const titleTouchedRef = useRef(false);
 
@@ -83,7 +93,10 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
   useEffect(() => {
     if (transaction) {
       setTitle(transaction.title || "");
-      setAmount(transaction.amount ?? "");
+      setCurrencyCode(transaction.currency || baseCurrency || "INR");
+      setAmount(transaction.original_amount ?? transaction.amount ?? "");
+      setCustomRate(transaction.exchange_rate ? String(transaction.exchange_rate) : "");
+      setShowRateInput(false);
       setCategory(transaction.category || "");
       setType(transaction.type || "expense");
       setDate(transaction.date ? transaction.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
@@ -94,7 +107,10 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       setLowConfidenceFields([]);
     } else {
       setTitle("");
+      setCurrencyCode(baseCurrency || "INR");
       setAmount("");
+      setCustomRate("");
+      setShowRateInput(false);
       setCategory("");
       setType("expense");
       setDate(new Date().toISOString().slice(0, 10));
@@ -109,7 +125,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       setScanNotice(null);
       setLowConfidenceFields([]);
     }
-  }, [transaction]);
+  }, [transaction, baseCurrency]);
 
   const applyExtractedReceipt = (data, source = "OCR") => {
     if (data.merchant) {
@@ -372,10 +388,15 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       const payload = {
         title: title.trim(),
         amount: Number(amount),
+        currency: currencyCode,
         category,
         type,
         date,
       };
+
+      if (currencyCode !== baseCurrency && customRate && Number(customRate) > 0) {
+        payload.exchange_rate = Number(customRate);
+      }
 
       if (!isEditing && isRecurring) {
         payload.is_recurring = true;
@@ -628,7 +649,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
           <div>
             <div className="flex items-center justify-between mb-1">
               <label htmlFor="tx-form-amount" className="form-label mb-0">
-                Amount (₹)
+                Amount ({currencies.find((c) => c.code === currencyCode)?.symbol || "₹"})
               </label>
               {lowConfidenceFields.includes("amount") && (
                 <span
@@ -643,25 +664,105 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
                 </span>
               )}
             </div>
-            <input
-              id="tx-form-amount"
-              type="number"
-              placeholder="0"
-              min="0.01"
-              step="0.01"
-              className="input-field tabular-nums"
-              style={{
-                borderColor: lowConfidenceFields.includes("amount")
-                  ? "var(--accent)"
-                  : undefined,
-              }}
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setLowConfidenceFields((prev) => prev.filter((f) => f !== "amount"));
-              }}
-              required
-            />
+
+            <div className="flex gap-1.5">
+              <select
+                id="tx-form-currency"
+                className="input-field text-xs font-semibold py-1.5 px-2 w-[82px] shrink-0 cursor-pointer"
+                style={{
+                  backgroundColor: "var(--surface)",
+                  borderColor: "var(--border)",
+                  color: "var(--text)",
+                }}
+                value={currencyCode}
+                onChange={(e) => {
+                  setCurrencyCode(e.target.value);
+                  setCustomRate("");
+                }}
+              >
+                {currencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.symbol} {c.code}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                id="tx-form-amount"
+                type="number"
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                className="input-field tabular-nums flex-1"
+                style={{
+                  borderColor: lowConfidenceFields.includes("amount")
+                    ? "var(--accent)"
+                    : undefined,
+                }}
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setLowConfidenceFields((prev) => prev.filter((f) => f !== "amount"));
+                }}
+                required
+              />
+            </div>
+
+            {currencyCode !== baseCurrency && (
+              <div className="mt-1 space-y-1">
+                <div
+                  className="flex items-center justify-between text-[11px]"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <span className="truncate">
+                    ≈{" "}
+                    {formatCurrency(
+                      (Number(amount) || 0) *
+                        (customRate && Number(customRate) > 0
+                          ? Number(customRate)
+                          : getExchangeRate(currencyCode, baseCurrency))
+                    )}{" "}
+                    <span className="opacity-75">
+                      (1 {currencyCode} ={" "}
+                      {Number(
+                        customRate && Number(customRate) > 0
+                          ? Number(customRate)
+                          : getExchangeRate(currencyCode, baseCurrency)
+                      ).toFixed(2)}{" "}
+                      {baseCurrency})
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowRateInput(!showRateInput)}
+                    className="text-[10px] underline ml-1 shrink-0 cursor-pointer"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    {showRateInput ? "Auto" : "Rate"}
+                  </button>
+                </div>
+
+                {showRateInput && (
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>
+                      1 {currencyCode} =
+                    </span>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      min="0.0001"
+                      placeholder={String(getExchangeRate(currencyCode, baseCurrency))}
+                      value={customRate}
+                      onChange={(e) => setCustomRate(e.target.value)}
+                      className="input-field tabular-nums text-[11px] py-0.5 px-2 flex-1"
+                    />
+                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      {baseCurrency}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -886,8 +987,8 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
           />
         </div>
         <div className="flex items-center justify-between text-[11px] tabular-nums" style={{ color: "var(--text-muted)" }}>
-          <span>₹{spent.toLocaleString("en-IN")} spent</span>
-          <span>Limit: ₹{BUDGET_LIMIT.toLocaleString("en-IN")}</span>
+          <span>{formatCurrency(spent)} spent</span>
+          <span>Limit: {formatCurrency(BUDGET_LIMIT)}</span>
         </div>
       </div>
     </div>

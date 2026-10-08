@@ -35,6 +35,10 @@ export default defineConfig({
         target: backendTarget,
         changeOrigin: true,
       },
+      '/currencies': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
       '/recurring-rules': {
         target: backendTarget,
         changeOrigin: true,

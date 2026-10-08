@@ -132,7 +132,7 @@ def register():
     except Exception as e:
         db.session.rollback()
         return jsonify({
-            "message": "Registration failed due to a server error. Please try again."
+            "message": f"Registration failed: {str(e)}"
         }), 500
 
 

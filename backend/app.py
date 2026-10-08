@@ -10,6 +10,7 @@ from routes.recurring_routes import recurring_bp
 from routes.forecast_routes import forecast_bp
 from routes.receipt_routes import receipt_bp
 from routes.goal_routes import goal_bp
+from routes.currency_routes import currency_bp
 from utils.recurring_processor import process_due_recurring_rules, start_recurring_scheduler
 import os
 
@@ -44,10 +45,11 @@ app.register_blueprint(recurring_bp)
 app.register_blueprint(forecast_bp)
 app.register_blueprint(receipt_bp)
 app.register_blueprint(goal_bp)
+app.register_blueprint(currency_bp)
 
 # Create tables, run migration, and seed categories
 with app.app_context():
-    from models import Transaction, Category, Budget, RecurringRule, User, Goal
+    from models import Transaction, Category, Budget, RecurringRule, User, Goal, ExchangeRateSetting
     from utils.migration import run_data_migration
 
     # Create tables if they don't exist
@@ -73,6 +75,10 @@ start_recurring_scheduler(app, interval_seconds=300)
 # Health check route
 @app.route("/")
 def home():
+    try:
+        run_data_migration(app)
+    except Exception as e:
+        app.logger.info(f"Home migration check: {e}")
     return {
         "message": "Expense Tracker API is running",
         "database": "PostgreSQL"

@@ -9,6 +9,7 @@ import {
 
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 import TransactionTable from "../components/TransactionTable";
 import TransactionForm from "../components/TransactionForm";
 
@@ -16,6 +17,7 @@ export default function Transactions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { categories } = useCategories();
   const { refreshKeys, triggerRefresh } = useAppRefresh();
+  const { activeCurrencyInfo } = useCurrency();
 
   // Read URL query parameters
   const urlSearch = searchParams.get("search") || searchParams.get("q") || "";
@@ -745,7 +747,9 @@ export default function Transactions() {
 
               {/* Min & Max Amount */}
               <div>
-                <label className="form-label text-[10px]">Amount Range (₹)</label>
+                <label className="form-label text-[10px]">
+                  Amount Range ({activeCurrencyInfo?.symbol || "₹"})
+                </label>
                 <div className="flex items-center gap-1.5">
                   <input
                     id="filter-min-amount"
@@ -890,7 +894,7 @@ export default function Transactions() {
             {(urlMinAmount || urlMaxAmount) && (
               <span className="filter-chip">
                 <span>
-                  Amount: ₹{urlMinAmount || "0"} – ₹{urlMaxAmount || "∞"}
+                  Amount: {activeCurrencyInfo?.symbol || "₹"}{urlMinAmount || "0"} – {activeCurrencyInfo?.symbol || "₹"}{urlMaxAmount || "∞"}
                 </span>
                 <button
                   type="button"

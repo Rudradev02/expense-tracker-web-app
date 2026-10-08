@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { getBudgetStatus } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 import BudgetModal from "./BudgetModal";
 import EmptyState from "./EmptyState";
 
-const formatINR = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
-
 export default function BudgetWidget({ showViewAllLink = true, limitDisplay = null }) {
   const { refreshKeys } = useAppRefresh();
+  const { formatCurrency } = useCurrency();
+  const formatINR = formatCurrency;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

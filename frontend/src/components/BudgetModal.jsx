@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createBudget, updateBudget } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function BudgetModal({
   isOpen,
@@ -11,6 +12,7 @@ export default function BudgetModal({
 }) {
   const { categories } = useCategories();
   const { triggerRefresh } = useAppRefresh();
+  const { activeCurrencyInfo } = useCurrency();
 
   const [category, setCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
@@ -188,7 +190,7 @@ export default function BudgetModal({
 
           <div>
             <label className="form-label" htmlFor="budget-limit">
-              Monthly Limit (₹)
+              Monthly Limit ({activeCurrencyInfo?.symbol || "₹"})
             </label>
             <div className="relative">
               <input

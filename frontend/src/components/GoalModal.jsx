@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createGoal, updateGoal } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function GoalModal({
   isOpen,
@@ -9,6 +10,7 @@ export default function GoalModal({
   onSuccess = null,
 }) {
   const { triggerRefresh } = useAppRefresh();
+  const { activeCurrencyInfo } = useCurrency();
 
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
@@ -180,7 +182,7 @@ export default function GoalModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="form-label" htmlFor="goal-target-amount">
-                Target Amount (₹)
+                Target Amount ({activeCurrencyInfo?.symbol || "₹"})
               </label>
               <input
                 id="goal-target-amount"
@@ -197,7 +199,7 @@ export default function GoalModal({
 
             <div>
               <label className="form-label" htmlFor="goal-saved-amount">
-                Already Saved (₹)
+                Already Saved ({activeCurrencyInfo?.symbol || "₹"})
               </label>
               <input
                 id="goal-saved-amount"

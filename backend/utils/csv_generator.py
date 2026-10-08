@@ -11,14 +11,17 @@ def generate_csv(transactions):
     output.write('\ufeff')
     writer = csv.writer(output)
 
-    # Header columns as requested: date, description, category, type, amount
-    writer.writerow(["date", "description", "category", "type", "amount"])
+    # Header columns: date, description, category, type, amount, currency, original_amount
+    writer.writerow(["date", "description", "category", "type", "amount", "currency", "original_amount"])
 
     for t in transactions:
         t_date = t.date.strftime("%Y-%m-%d") if t.date else ""
         t_type = (t.type or "").capitalize()
         t_category = t.category or "General"
-        t_amount = f"₹{t.amount:,.2f}"
-        writer.writerow([t_date, t.title or "", t_category, t_type, t_amount])
+        t_amount = f"{t.amount:,.2f}"
+        t_curr = getattr(t, "currency", "INR") or "INR"
+        orig_val = getattr(t, "original_amount", None)
+        t_orig = f"{orig_val:,.2f}" if orig_val is not None else t_amount
+        writer.writerow([t_date, t.title or "", t_category, t_type, t_amount, t_curr, t_orig])
 
     return output.getvalue().encode('utf-8')

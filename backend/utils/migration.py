@@ -23,6 +23,17 @@ def run_data_migration(app):
         # 1. Ensure all tables are created
         db.create_all()
 
+        # 1b. Immediately ensure multi-currency columns exist before querying models
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS base_currency VARCHAR(3) DEFAULT \'INR\';'))
+                conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT \'INR\';'))
+                conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS original_amount FLOAT;'))
+                conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS exchange_rate FLOAT DEFAULT 1.0;'))
+                conn.commit()
+        except Exception as e:
+            app.logger.info(f"Early column addition note: {e}")
+
         # 2. Ensure default user exists
         default_user = User.query.filter_by(username="default_user").first()
         if not default_user:
@@ -89,6 +100,26 @@ def run_data_migration(app):
         except Exception as e:
             db.session.rollback()
             app.logger.info(f"Category seeding note: {e}")
+
+        # 7. Multi-currency columns migration and backfill
+        try:
+            with db.engine.connect() as conn:
+                # Add base_currency to user table
+                conn.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS base_currency VARCHAR(3) DEFAULT \'INR\';'))
+                # Add currency, original_amount, exchange_rate to transaction table
+                conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT \'INR\';'))
+                conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS original_amount FLOAT;'))
+                conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS exchange_rate FLOAT DEFAULT 1.0;'))
+
+                # Backfill existing data
+                conn.execute(text("UPDATE \"user\" SET base_currency = 'INR' WHERE base_currency IS NULL;"))
+                conn.execute(text("UPDATE \"transaction\" SET currency = 'INR' WHERE currency IS NULL;"))
+                conn.execute(text("UPDATE \"transaction\" SET exchange_rate = 1.0 WHERE exchange_rate IS NULL;"))
+                conn.execute(text("UPDATE \"transaction\" SET original_amount = amount WHERE original_amount IS NULL;"))
+                conn.commit()
+            app.logger.info("Multi-currency schema migration and backfill completed successfully.")
+        except Exception as e:
+            app.logger.info(f"Multi-currency migration note: {e}")
 
 
 def seed_categories_for_user(user_id):

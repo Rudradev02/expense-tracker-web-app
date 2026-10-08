@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import EmptyState from "./EmptyState";
+import { useCurrency } from "../context/CurrencyContext";
 
 // Obsidian & Champagne Muted Color Palette
 const DONUT_PALETTE = [
@@ -36,9 +37,8 @@ const COLORS = {
   surface2: "#1B1B1E",
 };
 
-const formatINR = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
-
 function CustomChartTooltip({ active, payload, label }) {
+  const { formatCurrency } = useCurrency();
   if (!active || !payload?.length) return null;
 
   return (
@@ -83,7 +83,7 @@ function CustomChartTooltip({ active, payload, label }) {
                 className="tabular-nums"
                 style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}
               >
-                {formatINR(entry.value)}
+                {formatCurrency(entry.value)}
                 {isProjected && (
                   <span className="text-[10px] ml-1 font-normal" style={{ color: "var(--accent)" }}>
                     (Forecast)
@@ -105,6 +105,8 @@ export default function ExpenseCharts({
   loading = false,
   onAddTransaction,
 }) {
+  const { formatCurrency, activeCurrencyInfo } = useCurrency();
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -259,7 +261,7 @@ export default function ExpenseCharts({
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  {formatINR(totalExpense)}
+                  {formatCurrency(totalExpense)}
                 </span>
               </>
             ) : (
@@ -274,7 +276,7 @@ export default function ExpenseCharts({
                   className="text-[10px] block mt-0.5"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  ₹0 expenses
+                  {formatCurrency(0)} expenses
                 </span>
               </>
             )}
@@ -342,7 +344,7 @@ export default function ExpenseCharts({
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-                  tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
+                  tickFormatter={(val) => `${activeCurrencyInfo.symbol}${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
                   dx={-5}
                 />
                 <LineTooltip content={<CustomChartTooltip />} />

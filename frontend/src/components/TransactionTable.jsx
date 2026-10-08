@@ -1,15 +1,9 @@
 import { useState } from "react";
 import { deleteTransaction } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 import TransactionForm from "./TransactionForm";
 import EmptyState from "./EmptyState";
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 export default function TransactionTable({
   transactions = [],
@@ -26,6 +20,7 @@ export default function TransactionTable({
   onLoadSampleData,
 }) {
   const { triggerRefresh } = useAppRefresh();
+  const { formatCurrency, baseCurrency } = useCurrency();
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -248,7 +243,29 @@ export default function TransactionTable({
                       fontVariantNumeric: "tabular-nums",
                     }}
                   >
-                    {isIncome ? "+" : "-"}{formatCurrency(t.amount)}
+                    <div>
+                      <span>
+                        {isIncome ? "+" : "-"}{formatCurrency(t.amount, baseCurrency)}
+                      </span>
+                      {t.currency && t.currency !== baseCurrency && (
+                        <div
+                          className="text-[10px] font-normal tracking-tight"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          {formatCurrency(
+                            t.original_amount !== undefined && t.original_amount !== null
+                              ? t.original_amount
+                              : t.amount,
+                            t.currency
+                          )}
+                          {t.exchange_rate && Number(t.exchange_rate) !== 1 && (
+                            <span className="ml-1 opacity-75">
+                              (@ {Number(t.exchange_rate).toFixed(2)})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </td>
 
                   <td style={{ textAlign: "right" }}>

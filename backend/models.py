@@ -8,6 +8,8 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
 
+    base_currency = db.Column(db.String(3), default="INR", nullable=False)
+
     transactions = db.relationship(
         "Transaction",
         backref="user",
@@ -47,7 +49,8 @@ class User(db.Model):
         return {
             "id": self.id,
             "username": self.username,
-            "email": self.email
+            "email": self.email,
+            "base_currency": self.base_currency or "INR"
         }
 
 
@@ -81,6 +84,11 @@ class Transaction(db.Model):
     type = db.Column(db.String(10), nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Multi-currency support
+    currency = db.Column(db.String(3), default="INR", nullable=False)
+    original_amount = db.Column(db.Float, nullable=True)
+    exchange_rate = db.Column(db.Float, default=1.0, nullable=False)
+
     # Link transaction to a user
     user_id = db.Column(
         db.Integer,
@@ -96,16 +104,20 @@ class Transaction(db.Model):
     )
 
     def to_dict(self):
+        orig_amt = self.original_amount if self.original_amount is not None else self.amount
         return {
             "id": self.id,
             "title": self.title,
-            "amount": self.amount,
+            "amount": round(float(self.amount), 2),
             "category": self.category,
             "type": self.type,
             "date": self.date.isoformat() if self.date else None,
             "user_id": self.user_id,
             "recurring_rule_id": self.recurring_rule_id,
             "is_recurring": bool(self.recurring_rule_id),
+            "currency": self.currency or "INR",
+            "original_amount": round(float(orig_amt), 2),
+            "exchange_rate": round(float(self.exchange_rate or 1.0), 4),
         }
 
 
@@ -208,5 +220,28 @@ class Goal(db.Model):
             "target_date": self.target_date.isoformat() if self.target_date else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "user_id": self.user_id
+        }
+
+
+class ExchangeRateSetting(db.Model):
+    __tablename__ = "exchange_rate_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    rates_json = db.Column(db.Text, nullable=False)
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+    source = db.Column(db.String(50), default="fallback")
+
+    def to_dict(self):
+        import json
+        rates = {}
+        if self.rates_json:
+            try:
+                rates = json.loads(self.rates_json)
+            except Exception:
+                rates = {}
+        return {
+            "rates": rates,
+            "last_updated": self.last_updated.isoformat() if self.last_updated else None,
+            "source": self.source
         }
 

@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { contributeToGoal } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
-
-const formatINR = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function ContributeModal({
   isOpen,
@@ -11,6 +10,8 @@ export default function ContributeModal({
   onSuccess = null,
 }) {
   const { triggerRefresh } = useAppRefresh();
+  const { formatCurrency, activeCurrencyInfo } = useCurrency();
+  const formatINR = formatCurrency;
 
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -41,7 +42,7 @@ export default function ContributeModal({
 
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0) {
-      setError("Please enter a contribution amount greater than ₹0.");
+      setError(`Please enter a contribution amount greater than ${formatCurrency(0)}.`);
       return;
     }
 
@@ -173,7 +174,7 @@ export default function ContributeModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="form-label" htmlFor="contribute-amount">
-              Contribution Amount (₹)
+              Contribution Amount ({activeCurrencyInfo?.symbol || "₹"})
             </label>
             <input
               id="contribute-amount"

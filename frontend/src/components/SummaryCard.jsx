@@ -1,11 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+import { useCurrency } from "../context/CurrencyContext";
 
 const icons = {
   income: (
@@ -78,12 +72,13 @@ export default function SummaryCard({
   hasPreviousData = false,
   loading = false,
 }) {
+  const { formatCurrency, baseCurrency } = useCurrency();
   const icon = icons[type] || icons.balance;
   const isNegative = type === "balance" && amount < 0;
   const animatedAmount = useAnimatedCounter(amount);
 
   const displayValue = isRawNumber
-    ? animatedAmount.toLocaleString("en-IN")
+    ? animatedAmount.toLocaleString(baseCurrency === "INR" ? "en-IN" : "en-US")
     : formatCurrency(animatedAmount);
 
   // Helper for rendering trend indicator

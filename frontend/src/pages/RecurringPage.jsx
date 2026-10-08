@@ -10,18 +10,13 @@ import {
 } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 import CategorySelect from "../components/CategorySelect";
-
-const formatCurrency = (val) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(val);
 
 export default function RecurringPage() {
   const { categories } = useCategories();
   const { triggerRefresh, refreshKeys } = useAppRefresh();
+  const { formatCurrency, activeCurrencyInfo } = useCurrency();
 
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -765,7 +760,7 @@ export default function RecurringPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label htmlFor="recurring-form-amount" className="form-label">
-                      Amount (₹)
+                      Amount ({activeCurrencyInfo?.symbol || "₹"})
                     </label>
                     <input
                       id="recurring-form-amount"
