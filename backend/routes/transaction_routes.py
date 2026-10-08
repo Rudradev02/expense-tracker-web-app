@@ -434,53 +434,140 @@ def delete_transaction(current_user_id, id):
 @transaction_bp.route("/summary", methods=["GET"])
 @token_required
 def get_summary(current_user_id):
-    transactions = (
-        Transaction.query
-        .filter_by(user_id=current_user_id)
-        .order_by(Transaction.date)
-        .all()
-    )
+    start_date_str = request.args.get("start_date")
+    end_date_str = request.args.get("end_date")
+    prev_start_str = request.args.get("prev_start_date")
+    prev_end_str = request.args.get("prev_end_date")
 
-    income = 0
-    expense = 0
+    start_dt = None
+    end_dt = None
+    if start_date_str:
+        try:
+            start_dt = datetime.strptime(start_date_str.strip()[:10], "%Y-%m-%d")
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid start_date format. Expected YYYY-MM-DD"}), 400
+
+    if end_date_str:
+        try:
+            end_dt = datetime.strptime(end_date_str.strip()[:10], "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid end_date format. Expected YYYY-MM-DD"}), 400
+
+    if start_dt and end_dt and start_dt > end_dt:
+        return jsonify({"error": "start_date cannot be after end_date"}), 400
+
+    # Base query for current user
+    query = Transaction.query.filter_by(user_id=current_user_id)
+    if start_dt:
+        query = query.filter(Transaction.date >= start_dt)
+    if end_dt:
+        query = query.filter(Transaction.date <= end_dt)
+
+    transactions = query.order_by(Transaction.date).all()
+
+    income = 0.0
+    expense = 0.0
     expense_by_category = {}
     monthly_trends_dict = {}
 
     for t in transactions:
-        if t.type.lower() == "income":
-            income += t.amount
+        t_amt = float(t.amount or 0)
+        t_type = (t.type or "").lower()
+        if t_type == "income":
+            income += t_amt
         else:
-            expense += t.amount
-
-            cat = t.category.strip().title()
+            expense += t_amt
+            cat = t.category.strip().title() if t.category else "General"
             expense_by_category[cat] = (
-                expense_by_category.get(cat, 0) + t.amount
+                expense_by_category.get(cat, 0.0) + t_amt
             )
 
-        month_key = t.date.strftime("%b %Y")
+        month_key = t.date.strftime("%b %Y") if t.date else "Unknown"
 
         if month_key not in monthly_trends_dict:
             monthly_trends_dict[month_key] = {
                 "name": month_key,
-                "income": 0,
-                "expense": 0
+                "income": 0.0,
+                "expense": 0.0
             }
 
-        if t.type.lower() == "income":
-            monthly_trends_dict[month_key]["income"] += t.amount
+        if t_type == "income":
+            monthly_trends_dict[month_key]["income"] += t_amt
         else:
-            monthly_trends_dict[month_key]["expense"] += t.amount
+            monthly_trends_dict[month_key]["expense"] += t_amt
+
+    # Previous period comparison
+    prev_income = 0.0
+    prev_expense = 0.0
+    has_prev_data = False
+
+    if start_dt and end_dt:
+        prev_start_dt = None
+        prev_end_dt = None
+        if prev_start_str and prev_end_str:
+            try:
+                prev_start_dt = datetime.strptime(prev_start_str.strip()[:10], "%Y-%m-%d")
+                prev_end_dt = datetime.strptime(prev_end_str.strip()[:10], "%Y-%m-%d").replace(
+                    hour=23, minute=59, second=59, microsecond=999999
+                )
+            except (ValueError, TypeError):
+                pass
+
+        if not prev_start_dt or not prev_end_dt:
+            duration = end_dt - start_dt
+            prev_end_dt = start_dt - timedelta(microseconds=1)
+            prev_start_dt = prev_end_dt - duration
+
+        prev_txs = (
+            Transaction.query
+            .filter_by(user_id=current_user_id)
+            .filter(Transaction.date >= prev_start_dt, Transaction.date <= prev_end_dt)
+            .all()
+        )
+        has_prev_data = len(prev_txs) > 0
+        for pt in prev_txs:
+            p_amt = float(pt.amount or 0)
+            if (pt.type or "").lower() == "income":
+                prev_income += p_amt
+            else:
+                prev_expense += p_amt
+
+    prev_balance = prev_income - prev_expense
+    balance = income - expense
+
+    def calc_pct_change(curr, prev):
+        if prev == 0:
+            if curr == 0:
+                return 0.0
+            return 100.0 if curr > 0 else -100.0
+        return round(((curr - prev) / abs(prev)) * 100, 1)
+
+    income_change_pct = calc_pct_change(income, prev_income) if has_prev_data else None
+    expense_change_pct = calc_pct_change(expense, prev_expense) if has_prev_data else None
+    balance_change_pct = calc_pct_change(balance, prev_balance) if has_prev_data else None
 
     return jsonify({
         "income": income,
         "expense": expense,
-        "balance": income - expense,
+        "balance": balance,
         "expense_by_category": [
             {"name": k, "value": v}
             for k, v in expense_by_category.items()
         ],
-        "monthly_trends": list(monthly_trends_dict.values())
+        "monthly_trends": list(monthly_trends_dict.values()),
+        "previous": {
+            "income": prev_income,
+            "expense": prev_expense,
+            "balance": prev_balance,
+            "has_previous_data": has_prev_data,
+            "income_change_pct": income_change_pct,
+            "expense_change_pct": expense_change_pct,
+            "balance_change_pct": balance_change_pct,
+        }
     })
+
 
 
 # INSIGHTS

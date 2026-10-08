@@ -74,6 +74,9 @@ export default function SummaryCard({
   isRawNumber = false,
   isHero = false,
   supportingStat = null,
+  changePct = null,
+  hasPreviousData = false,
+  loading = false,
 }) {
   const icon = icons[type] || icons.balance;
   const isNegative = type === "balance" && amount < 0;
@@ -82,6 +85,81 @@ export default function SummaryCard({
   const displayValue = isRawNumber
     ? animatedAmount.toLocaleString("en-IN")
     : formatCurrency(animatedAmount);
+
+  // Helper for rendering trend indicator
+  const renderTrendIndicator = () => {
+    if (loading) {
+      return (
+        <div
+          className="skeleton inline-block"
+          style={{
+            height: "20px",
+            width: "92px",
+            borderRadius: "6px",
+          }}
+        />
+      );
+    }
+
+    if (!hasPreviousData || changePct === null || changePct === undefined) {
+      return null;
+    }
+
+    // Determine favorable vs unfavorable sentiment
+    // For expense: decreased spending (changePct < 0) is favorable, increased (changePct > 0) is unfavorable
+    // For income & balance: increased (changePct > 0) is favorable, decreased (changePct < 0) is unfavorable
+    const isNeutral = changePct === 0;
+    const isFavorable = type === "expense" ? changePct < 0 : changePct > 0;
+
+    let badgeColor = "var(--text-muted)";
+    let badgeBg = "var(--surface-2)";
+    let badgeBorder = "var(--border)";
+
+    if (!isNeutral) {
+      if (isFavorable) {
+        badgeColor = "var(--income)";
+        badgeBg = "rgba(45, 142, 95, 0.12)";
+        badgeBorder = "rgba(45, 142, 95, 0.25)";
+      } else {
+        badgeColor = "var(--expense)";
+        badgeBg = "rgba(224, 122, 107, 0.12)";
+        badgeBorder = "rgba(224, 122, 107, 0.25)";
+      }
+    }
+
+    const sign = changePct > 0 ? "+" : "";
+    const label = `${sign}${changePct}% vs previous`;
+
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded tabular-nums"
+        style={{
+          backgroundColor: badgeBg,
+          color: badgeColor,
+          border: `1px solid ${badgeBorder}`,
+        }}
+        title={`Comparison with previous period: ${sign}${changePct}%`}
+      >
+        {!isNeutral && (
+          <svg
+            className="w-3 h-3 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden="true"
+          >
+            {changePct > 0 ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            )}
+          </svg>
+        )}
+        <span>{label}</span>
+      </span>
+    );
+  };
 
   if (isHero) {
     return (
@@ -110,17 +188,25 @@ export default function SummaryCard({
             </span>
           </div>
 
-          <div className="flex items-baseline gap-2 mt-1">
-            <h3
-              className="text-3xl sm:text-4xl font-normal tracking-tight font-serif tabular-nums m-0"
-              style={{
-                color: isNegative ? "var(--expense)" : "var(--text)",
-                fontFamily: "var(--font-serif)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {displayValue}
-            </h3>
+          <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-3 mt-1">
+            {loading ? (
+              <div
+                className="skeleton"
+                style={{ height: "40px", width: "160px", borderRadius: "8px" }}
+              />
+            ) : (
+              <h3
+                className="text-3xl sm:text-4xl font-normal tracking-tight font-serif tabular-nums m-0"
+                style={{
+                  color: isNegative ? "var(--expense)" : "var(--text)",
+                  fontFamily: "var(--font-serif)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {displayValue}
+              </h3>
+            )}
+            {renderTrendIndicator()}
           </div>
         </div>
 
@@ -130,12 +216,16 @@ export default function SummaryCard({
             style={{ borderTop: "1px solid var(--border)" }}
           >
             <span style={{ color: "var(--text-muted)" }}>Activity</span>
-            <span
-              className="tabular-nums font-medium"
-              style={{ color: "var(--text)" }}
-            >
-              {supportingStat}
-            </span>
+            {loading ? (
+              <div className="skeleton" style={{ height: "14px", width: "80px", borderRadius: "4px" }} />
+            ) : (
+              <span
+                className="tabular-nums font-medium"
+                style={{ color: "var(--text)" }}
+              >
+                {supportingStat}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -173,15 +263,25 @@ export default function SummaryCard({
           </span>
         </div>
 
-        <h3
-          className="text-xl sm:text-2xl font-semibold tracking-tight tabular-nums m-0 mt-1"
-          style={{
-            color: valueColor,
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {displayValue}
-        </h3>
+        <div className="flex flex-wrap items-baseline justify-between gap-2 mt-1">
+          {loading ? (
+            <div
+              className="skeleton"
+              style={{ height: "28px", width: "120px", borderRadius: "6px" }}
+            />
+          ) : (
+            <h3
+              className="text-xl sm:text-2xl font-semibold tracking-tight tabular-nums m-0"
+              style={{
+                color: valueColor,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {displayValue}
+            </h3>
+          )}
+          {renderTrendIndicator()}
+        </div>
       </div>
     </div>
   );

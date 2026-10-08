@@ -1,11 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DarkModeToggle from "../DarkModeToggle";
+import CommandPalette from "../CommandPalette";
+import TransactionForm from "../TransactionForm";
+import { useAppRefresh } from "../../context/AppRefreshContext";
 
 export default function AppShell({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { triggerRefresh } = useAppRefresh();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Global shortcut: Ctrl+K or Cmd+K to toggle command palette
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -246,7 +264,36 @@ export default function AppShell({ children }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Command Palette Trigger */}
+            <button
+              type="button"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-normal transition-colors cursor-pointer"
+              style={{
+                backgroundColor: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+              }}
+              title="Search or run a command (Ctrl+K)"
+              aria-label="Open command palette"
+            >
+              <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="hidden md:inline">Commands</span>
+              <kbd
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded select-none tabular-nums"
+                style={{
+                  backgroundColor: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                {typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K"}
+              </kbd>
+            </button>
+
             <DarkModeToggle />
 
             <div

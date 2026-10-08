@@ -183,6 +183,15 @@ body {
   animation: slideInUp 220ms ease forwards;
 }
 
+/* Command Palette Animations (Under 150ms) */
+.command-palette-backdrop {
+  animation: fadeIn 120ms ease-out forwards;
+}
+
+.command-palette-modal {
+  animation: slideInUp 130ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Skeleton Loading (No heavy pulsing spinners) */
 .skeleton {
   background: linear-gradient(

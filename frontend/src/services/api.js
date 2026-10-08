@@ -55,7 +55,7 @@ export const registerUser = async (username, email, password) => {
   return response;
 };
 
-export const getSummary = () => API.get("/summary");
+export const getSummary = (params = {}) => API.get("/summary", { params });
 
 
 export const getTransactions = (paramsOrTitle = "", category = "") => {

@@ -85,7 +85,16 @@ function CustomChartTooltip({ active, payload, label }) {
   );
 }
 
-export default function ExpenseCharts({ expenseByCategory, monthlyTrends }) {
+export default function ExpenseCharts({ expenseByCategory, monthlyTrends, loading = false }) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="skeleton" style={{ height: "340px", borderRadius: "14px" }} />
+        <div className="skeleton" style={{ height: "340px", borderRadius: "14px" }} />
+      </div>
+    );
+  }
+
   if (!expenseByCategory || !monthlyTrends) return null;
 
   // Sanitize and filter out zero or invalid values
@@ -285,7 +294,7 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends }) {
                   name="Income"
                   stroke={COLORS.income}
                   strokeWidth={1.5}
-                  dot={false}
+                  dot={validTrends.length <= 2 ? { r: 3.5, fill: COLORS.income } : false}
                   activeDot={{
                     r: 4,
                     fill: COLORS.income,
@@ -299,7 +308,7 @@ export default function ExpenseCharts({ expenseByCategory, monthlyTrends }) {
                   name="Expense"
                   stroke={COLORS.expense}
                   strokeWidth={1.5}
-                  dot={false}
+                  dot={validTrends.length <= 2 ? { r: 3.5, fill: COLORS.expense } : false}
                   activeDot={{
                     r: 4,
                     fill: COLORS.expense,
