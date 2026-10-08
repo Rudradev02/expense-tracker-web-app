@@ -9,6 +9,7 @@ export default function DarkModeToggle({ darkMode: propDarkMode, onToggle: propO
     <button
       type="button"
       onClick={handleToggle}
+      title="Toggle theme (T)"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       className={`relative inline-flex h-8 w-14 items-center rounded-full border p-0.5 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 ${className}`}
       style={{

@@ -54,7 +54,12 @@ function fuzzyScore(query, item) {
   return 0;
 }
 
-export default function CommandPalette({ isOpen, onClose, onOpenAddTransaction }) {
+export default function CommandPalette({
+  isOpen,
+  onClose,
+  onOpenAddTransaction,
+  onOpenShortcutsHelp,
+}) {
   const navigate = useNavigate();
   const { darkMode, toggleDarkMode } = useDarkMode();
 
@@ -206,7 +211,7 @@ export default function CommandPalette({ isOpen, onClose, onOpenAddTransaction }
         label: "Add transaction",
         description: "Log a new income or expense entry",
         category: "Actions",
-        shortcut: "+",
+        shortcut: "N",
         icon: (
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -218,6 +223,23 @@ export default function CommandPalette({ isOpen, onClose, onOpenAddTransaction }
           if (onOpenAddTransaction) {
             onOpenAddTransaction();
           }
+        },
+      },
+      {
+        id: "action-search-transactions",
+        label: "Search transactions",
+        description: "Focus transactions ledger filter",
+        category: "Actions",
+        shortcut: "/",
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        ),
+        keywords: ["find", "search", "filter", "query", "ledger", "transactions"],
+        action: () => {
+          onClose();
+          navigate("/transactions?focusSearch=1");
         },
       },
       {
@@ -239,6 +261,25 @@ export default function CommandPalette({ isOpen, onClose, onOpenAddTransaction }
         action: () => {
           toggleDarkMode();
           onClose();
+        },
+      },
+      {
+        id: "action-shortcuts-help",
+        label: "Keyboard shortcuts",
+        description: "View all available keyboard navigation & shortcut keys",
+        category: "Help",
+        shortcut: "?",
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        ),
+        keywords: ["shortcuts", "hotkeys", "keys", "help", "guide", "cheat", "sheet"],
+        action: () => {
+          onClose();
+          if (onOpenShortcutsHelp) {
+            onOpenShortcutsHelp();
+          }
         },
       },
       {
@@ -279,7 +320,16 @@ export default function CommandPalette({ isOpen, onClose, onOpenAddTransaction }
         },
       },
     ],
-    [darkMode, isExporting, handleExportCSV, navigate, onClose, onOpenAddTransaction, toggleDarkMode]
+    [
+      darkMode,
+      isExporting,
+      handleExportCSV,
+      navigate,
+      onClose,
+      onOpenAddTransaction,
+      onOpenShortcutsHelp,
+      toggleDarkMode,
+    ]
   );
 
   // Filter commands by query with fuzzy scoring

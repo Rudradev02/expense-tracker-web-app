@@ -533,6 +533,7 @@ export default function Dashboard() {
               setShowModal(true);
             }}
             className="btn-accent"
+            title="New transaction (N)"
           >
             <span className="text-base leading-none">+</span>
             <span>Add Transaction</span>

@@ -145,6 +145,30 @@ export default function Transactions() {
     setSearchInput(urlSearch);
   }, [urlSearch]);
 
+  // Handle auto-focus search when triggered via shortcut (/ or Command Palette)
+  useEffect(() => {
+    if (searchParams.get("focusSearch") === "1") {
+      const timer = setTimeout(() => {
+        const el = document.getElementById("search-transactions-input");
+        if (el) {
+          el.focus();
+          el.select?.();
+        }
+      }, 50);
+
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("focusSearch");
+          return next;
+        },
+        { replace: true }
+      );
+
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
+
   // Helper to update URL params
   const updateFilterParams = useCallback(
     (updates) => {
@@ -518,6 +542,7 @@ export default function Transactions() {
             }}
             className="btn-accent"
             id="btn-add-transaction"
+            title="New transaction (N)"
           >
             <span className="text-base leading-none">+</span>
             <span>Add Transaction</span>
@@ -561,11 +586,24 @@ export default function Transactions() {
                 id="search-transactions-input"
                 type="text"
                 placeholder="Search description or notes..."
+                title="Search transactions (/)"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="input-field pl-10 pr-9 py-2 text-xs"
               />
-              {searchInput && (
+              {!searchInput ? (
+                <kbd
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono rounded select-none hidden sm:inline-block"
+                  style={{
+                    backgroundColor: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-muted)",
+                  }}
+                  title="Press / to focus search"
+                >
+                  /
+                </kbd>
+              ) : (
                 <button
                   type="button"
                   onClick={handleClearSearch}

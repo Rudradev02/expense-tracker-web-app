@@ -2,11 +2,14 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DarkModeToggle from "../DarkModeToggle";
 import CommandPalette from "../CommandPalette";
+import ShortcutsHelpModal from "../ShortcutsHelpModal";
 import InstallAppButton from "../InstallAppButton";
 import TransactionForm from "../TransactionForm";
 import CurrencySelector from "../CurrencySelector";
 import { useAppRefresh } from "../../context/AppRefreshContext";
 import { useCurrency } from "../../context/CurrencyContext";
+import { useDarkMode } from "../../context/DarkModeContext";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { logoutUser } from "../../services/api";
 
 function getUserInitials(name) {
@@ -23,9 +26,30 @@ export default function AppShell({ children }) {
   const navigate = useNavigate();
   const { triggerRefresh } = useAppRefresh();
   const { activeCurrencyInfo } = useCurrency();
+  const { toggleDarkMode } = useDarkMode();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+
+  // Global keyboard shortcuts hook
+  useKeyboardShortcuts({
+    onOpenAddTransaction: () => setShowAddModal(true),
+    onFocusSearch: () => {
+      if (location.pathname === "/transactions") {
+        const input = document.getElementById("search-transactions-input");
+        if (input) {
+          input.focus();
+          input.select?.();
+        }
+      } else {
+        navigate("/transactions?focusSearch=1");
+      }
+    },
+    onNavigate: (path) => navigate(path),
+    onToggleTheme: () => toggleDarkMode(),
+    onOpenShortcutsHelp: () => setShortcutsModalOpen(true),
+  });
 
   // Global shortcut: Ctrl+K or Cmd+K to toggle command palette
   useEffect(() => {
@@ -34,10 +58,13 @@ export default function AppShell({ children }) {
         e.preventDefault();
         setCommandPaletteOpen((prev) => !prev);
       }
+      if (e.key === "Escape" && showAddModal) {
+        setShowAddModal(false);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [showAddModal]);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -48,6 +75,7 @@ export default function AppShell({ children }) {
     {
       label: "Dashboard",
       path: "/dashboard",
+      tooltip: "Dashboard (G then D)",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -57,6 +85,7 @@ export default function AppShell({ children }) {
     {
       label: "Transactions",
       path: "/transactions",
+      tooltip: "Transactions (G then T)",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -66,6 +95,7 @@ export default function AppShell({ children }) {
     {
       label: "Categories",
       path: "/categories",
+      tooltip: "Categories (G then C)",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -75,6 +105,7 @@ export default function AppShell({ children }) {
     {
       label: "Budgets",
       path: "/budgets",
+      tooltip: "Budgets",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -84,6 +115,7 @@ export default function AppShell({ children }) {
     {
       label: "Goals",
       path: "/goals",
+      tooltip: "Savings Goals",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -93,6 +125,7 @@ export default function AppShell({ children }) {
     {
       label: "Recurring",
       path: "/recurring",
+      tooltip: "Recurring Rules",
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -181,6 +214,7 @@ export default function AppShell({ children }) {
                 <Link
                   key={item.path}
                   to={item.path}
+                  title={item.tooltip || item.label}
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-md text-xs font-medium transition-colors duration-150 no-underline"
                   style={{
@@ -328,6 +362,22 @@ export default function AppShell({ children }) {
 
             <DarkModeToggle />
 
+            {/* Keyboard Shortcuts Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setShortcutsModalOpen(true)}
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-xs font-mono font-medium transition-colors cursor-pointer"
+              style={{
+                backgroundColor: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+              }}
+              title="Keyboard shortcuts (?)"
+              aria-label="Open keyboard shortcuts reference"
+            >
+              ?
+            </button>
+
             <div
               className="hidden sm:flex items-center gap-2.5 pl-3"
               style={{ borderLeft: "1px solid var(--border)" }}
@@ -377,6 +427,7 @@ export default function AppShell({ children }) {
             <Link
               key={item.path}
               to={item.path}
+              title={item.tooltip || item.label}
               className="flex flex-col items-center justify-center py-1 px-3 text-[10px] font-medium transition-colors no-underline"
               style={{
                 color: isActive ? "var(--accent)" : "var(--text-muted)",
@@ -394,6 +445,13 @@ export default function AppShell({ children }) {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         onOpenAddTransaction={() => setShowAddModal(true)}
+        onOpenShortcutsHelp={() => setShortcutsModalOpen(true)}
+      />
+
+      {/* Global Shortcuts Reference Modal */}
+      <ShortcutsHelpModal
+        isOpen={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
       />
 
       {/* Global Add Transaction Modal Overlay */}
