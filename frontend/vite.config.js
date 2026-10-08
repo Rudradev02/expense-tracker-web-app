@@ -47,6 +47,10 @@ export default defineConfig({
         target: backendTarget,
         changeOrigin: true,
       },
+      '/scan-receipt': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
       '/api': {
         target: backendTarget,
         changeOrigin: true,

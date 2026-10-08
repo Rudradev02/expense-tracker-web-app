@@ -8,6 +8,7 @@ from routes.auth_routes import auth_bp
 from routes.budget_routes import budget_bp
 from routes.recurring_routes import recurring_bp
 from routes.forecast_routes import forecast_bp
+from routes.receipt_routes import receipt_bp
 from utils.recurring_processor import process_due_recurring_rules, start_recurring_scheduler
 import os
 
@@ -40,6 +41,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(budget_bp)
 app.register_blueprint(recurring_bp)
 app.register_blueprint(forecast_bp)
+app.register_blueprint(receipt_bp)
 
 # Create tables, run migration, and seed categories
 with app.app_context():

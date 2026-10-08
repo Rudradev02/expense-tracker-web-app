@@ -199,11 +199,19 @@ def add_transaction(current_user_id):
     if data.get("type", "").lower() not in ["income", "expense"]:
         return jsonify({"error": "Type must be income or expense"}), 400
 
+    tx_date = datetime.utcnow()
+    if data.get("date"):
+        try:
+            tx_date = datetime.strptime(str(data["date"])[:10], "%Y-%m-%d")
+        except (ValueError, TypeError):
+            pass
+
     transaction = Transaction(
         title=data["title"],
         amount=data["amount"],
         category=data["category"],
         type=data["type"],
+        date=tx_date,
         user_id=current_user_id
     )
 

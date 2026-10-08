@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { addTransaction, updateTransaction, getSummary, suggestCategory } from "../services/api";
+import {
+  addTransaction,
+  updateTransaction,
+  getSummary,
+  suggestCategory,
+  scanReceipt,
+} from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import CategorySelect from "./CategorySelect";
@@ -45,6 +51,10 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
   const [amount, setAmount] = useState(transaction?.amount ?? "");
   const [category, setCategory] = useState(transaction?.category || "");
   const [type, setType] = useState(transaction?.type || "expense");
+  const [date, setDate] = useState(() => {
+    if (transaction?.date) return transaction.date.slice(0, 10);
+    return new Date().toISOString().slice(0, 10);
+  });
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [spent, setSpent] = useState(0);
@@ -56,6 +66,12 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isUserOverridden, setIsUserOverridden] = useState(false);
   const titleTouchedRef = useRef(false);
+
+  // Receipt scan state
+  const [scanning, setScanning] = useState(false);
+  const [scanNotice, setScanNotice] = useState(null);
+  const [lowConfidenceFields, setLowConfidenceFields] = useState([]);
+  const fileInputRef = useRef(null);
 
   // Recurring options for new transactions
   const [isRecurring, setIsRecurring] = useState(false);
@@ -70,14 +86,18 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       setAmount(transaction.amount ?? "");
       setCategory(transaction.category || "");
       setType(transaction.type || "expense");
+      setDate(transaction.date ? transaction.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
       setIsRecurring(Boolean(transaction.is_recurring));
       setIsUserOverridden(true);
       titleTouchedRef.current = false;
+      setScanNotice(null);
+      setLowConfidenceFields([]);
     } else {
       setTitle("");
       setAmount("");
       setCategory("");
       setType("expense");
+      setDate(new Date().toISOString().slice(0, 10));
       setIsRecurring(false);
       setFrequency("monthly");
       setEndDate("");
@@ -86,8 +106,93 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       setSuggestionSource(null);
       setIsUserOverridden(false);
       titleTouchedRef.current = false;
+      setScanNotice(null);
+      setLowConfidenceFields([]);
     }
   }, [transaction]);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    // Max 5MB validation
+    if (file.size > 5 * 1024 * 1024) {
+      setScanNotice({
+        type: "error",
+        message: "Receipt image exceeds 5MB limit. Please upload a smaller image.",
+      });
+      return;
+    }
+
+    setScanning(true);
+    setScanNotice(null);
+    setLowConfidenceFields([]);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await scanReceipt(formData);
+      const data = res.data;
+
+      if (!data.success) {
+        setScanNotice({
+          type: "warning",
+          message:
+            data.friendly_message ||
+            data.error ||
+            "Could not extract text from receipt. You can enter details manually.",
+        });
+        return;
+      }
+
+      // Prefill extracted values
+      if (data.merchant) {
+        setTitle(data.merchant);
+        titleTouchedRef.current = true;
+      }
+      if (data.amount !== null && data.amount !== undefined) {
+        setAmount(data.amount);
+      }
+      if (data.date) {
+        setDate(data.date);
+      }
+      if (data.category) {
+        setCategory(data.category);
+        setSuggestedCategory(data.category);
+        setSuggestionConfidence(data.confidences?.category || 0.85);
+      }
+      if (data.type) {
+        setType(data.type);
+      }
+
+      const lowConf = data.low_confidence_fields || [];
+      setLowConfidenceFields(lowConf);
+
+      if (lowConf.length > 0) {
+        setScanNotice({
+          type: "warning",
+          message: `Receipt scanned. Please double-check highlighted ${lowConf.join(", ")} before saving.`,
+        });
+      } else {
+        setScanNotice({
+          type: "success",
+          message: "Receipt scanned and fields prefilled with high confidence.",
+        });
+      }
+    } catch (err) {
+      console.error("Receipt scan failed:", err);
+      setScanNotice({
+        type: "warning",
+        message:
+          err.response?.data?.friendly_message ||
+          "Receipt scanning service error. Please enter details manually.",
+      });
+    } finally {
+      setScanning(false);
+    }
+  };
 
   // Debounced auto-suggestion when title changes
   useEffect(() => {
@@ -174,6 +279,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
     const selected = e.target.value;
     setCategory(selected);
     setIsUserOverridden(true);
+    setLowConfidenceFields((prev) => prev.filter((f) => f !== "category"));
 
     // When the user overrides or manually chooses a category, remember that choice for next time!
     if (title.trim()) {
@@ -209,6 +315,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         amount: Number(amount),
         category,
         type,
+        date,
       };
 
       if (!isEditing && isRecurring) {
@@ -258,6 +365,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         setAmount("");
         setCategory("");
         setType("expense");
+        setDate(new Date().toISOString().slice(0, 10));
         setIsRecurring(false);
         setFrequency("monthly");
         setEndDate("");
@@ -266,6 +374,8 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         setSuggestionSource(null);
         setIsUserOverridden(false);
         titleTouchedRef.current = false;
+        setScanNotice(null);
+        setLowConfidenceFields([]);
       }
 
       if (onSuccess) {
@@ -311,27 +421,163 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
         </div>
       )}
 
+      {/* Scan Receipt Action (Desktop file upload + Mobile rear camera capture) */}
+      {!isEditing && (
+        <div
+          className="p-3 rounded-xl flex items-center justify-between gap-3 transition-all"
+          style={{
+            backgroundColor: "var(--surface-2)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--border)",
+                color: "var(--accent)",
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <span className="text-xs font-semibold block truncate" style={{ color: "var(--text)" }}>
+                Scan receipt
+              </span>
+              <span className="text-[11px] block truncate" style={{ color: "var(--text-muted)" }}>
+                Upload photo or take picture to prefill fields
+              </span>
+            </div>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileSelect}
+            id="receipt-file-input"
+          />
+
+          <button
+            type="button"
+            disabled={scanning}
+            onClick={() => fileInputRef.current?.click()}
+            className="btn-outline text-xs py-1.5 px-3 cursor-pointer shrink-0 flex items-center gap-1.5"
+          >
+            {scanning ? (
+              <>
+                <span
+                  className="w-2.5 h-2.5 rounded-full border-2 border-t-transparent animate-spin inline-block"
+                  style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }}
+                />
+                <span>Scanning...</span>
+              </>
+            ) : (
+              <span>Upload / Camera</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* OCR Scan Feedback Banner */}
+      {scanNotice && (
+        <div
+          className="p-3 rounded-lg text-xs flex items-start justify-between gap-2 animate-fade-in"
+          style={{
+            backgroundColor:
+              scanNotice.type === "error"
+                ? "rgba(224, 122, 107, 0.12)"
+                : scanNotice.type === "warning"
+                ? "rgba(212, 180, 131, 0.12)"
+                : "var(--surface-2)",
+            border:
+              scanNotice.type === "error"
+                ? "1px solid rgba(224, 122, 107, 0.3)"
+                : scanNotice.type === "warning"
+                ? "1px solid rgba(212, 180, 131, 0.3)"
+                : "1px solid var(--border)",
+            color:
+              scanNotice.type === "error"
+                ? "var(--expense)"
+                : scanNotice.type === "warning"
+                ? "var(--accent)"
+                : "var(--text)",
+          }}
+        >
+          <span className="leading-relaxed">{scanNotice.message}</span>
+          <button
+            type="button"
+            onClick={() => setScanNotice(null)}
+            className="opacity-60 hover:opacity-100 text-xs cursor-pointer ml-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="tx-form-title" className="form-label">
-            Title / Description
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="tx-form-title" className="form-label mb-0">
+              Title / Description
+            </label>
+            {lowConfidenceFields.includes("merchant") && (
+              <span
+                className="text-[10px] font-medium px-1.5 py-0.2 rounded"
+                style={{
+                  backgroundColor: "rgba(212, 180, 131, 0.12)",
+                  border: "1px solid rgba(212, 180, 131, 0.3)",
+                  color: "var(--accent)",
+                }}
+              >
+                Needs verification
+              </span>
+            )}
+          </div>
           <input
             id="tx-form-title"
             type="text"
-            placeholder="e.g. Swiggy lunch, Uber ride, Netflix, consulting retainer..."
+            placeholder="e.g. Starbucks, Swiggy, Uber ride, electricity bill..."
             className="input-field"
+            style={{
+              borderColor: lowConfidenceFields.includes("merchant")
+                ? "var(--accent)"
+                : undefined,
+            }}
             value={title}
-            onChange={handleTitleChange}
+            onChange={(e) => {
+              handleTitleChange(e);
+              setLowConfidenceFields((prev) => prev.filter((f) => f !== "merchant"));
+            }}
             required
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label htmlFor="tx-form-amount" className="form-label">
-              Amount (₹)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="tx-form-amount" className="form-label mb-0">
+                Amount (₹)
+              </label>
+              {lowConfidenceFields.includes("amount") && (
+                <span
+                  className="text-[10px] font-medium px-1.5 py-0.2 rounded"
+                  style={{
+                    backgroundColor: "rgba(212, 180, 131, 0.12)",
+                    border: "1px solid rgba(212, 180, 131, 0.3)",
+                    color: "var(--accent)",
+                  }}
+                >
+                  Verify
+                </span>
+              )}
+            </div>
             <input
               id="tx-form-amount"
               type="number"
@@ -339,14 +585,58 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
               min="0.01"
               step="0.01"
               className="input-field tabular-nums"
+              style={{
+                borderColor: lowConfidenceFields.includes("amount")
+                  ? "var(--accent)"
+                  : undefined,
+              }}
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setLowConfidenceFields((prev) => prev.filter((f) => f !== "amount"));
+              }}
               required
             />
           </div>
 
           <div>
-            <label htmlFor="tx-form-type" className="form-label">
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="tx-form-date" className="form-label mb-0">
+                Date
+              </label>
+              {lowConfidenceFields.includes("date") && (
+                <span
+                  className="text-[10px] font-medium px-1.5 py-0.2 rounded"
+                  style={{
+                    backgroundColor: "rgba(212, 180, 131, 0.12)",
+                    border: "1px solid rgba(212, 180, 131, 0.3)",
+                    color: "var(--accent)",
+                  }}
+                >
+                  Verify
+                </span>
+              )}
+            </div>
+            <input
+              id="tx-form-date"
+              type="date"
+              className="input-field"
+              style={{
+                borderColor: lowConfidenceFields.includes("date")
+                  ? "var(--accent)"
+                  : undefined,
+              }}
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setLowConfidenceFields((prev) => prev.filter((f) => f !== "date"));
+              }}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="tx-form-type" className="form-label mb-1">
               Type
             </label>
             <select

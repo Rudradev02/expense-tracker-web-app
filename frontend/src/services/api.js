@@ -186,6 +186,13 @@ export const getForecast = () => API.get("/forecast");
 export const suggestCategory = (description) =>
   API.get("/suggest-category", { params: { description } });
 
+export const scanReceipt = (formData) =>
+  API.post("/scan-receipt", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
 export const loadSampleData = () => API.post("/transactions/sample-data");
 
 export default API;
