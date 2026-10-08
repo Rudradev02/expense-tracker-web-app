@@ -4,7 +4,7 @@ import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import CategorySelect from "./CategorySelect";
 
-export default function TransactionForm() {
+export default function TransactionForm({ onSuccess }) {
   const { categories } = useCategories();
   const { triggerRefresh, refreshKeys } = useAppRefresh();
   const [title, setTitle] = useState("");
@@ -29,6 +29,7 @@ export default function TransactionForm() {
   useEffect(() => {
     fetchBudgetStatus();
   }, [fetchBudgetStatus, refreshKeys.transactions]);
+
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
@@ -46,16 +47,19 @@ export default function TransactionForm() {
         type,
       });
 
-      showToast("success", "Transaction added successfully!");
+      showToast("success", "Transaction recorded successfully.");
       triggerRefresh('transactions');
       triggerRefresh('dashboard');
       setTitle("");
       setAmount("");
       setCategory("");
       setType("expense");
+      if (onSuccess) {
+        setTimeout(onSuccess, 500);
+      }
     } catch (error) {
       console.error(error);
-      showToast("error", "Failed to add transaction");
+      showToast("error", "Failed to record transaction.");
     } finally {
       setSubmitting(false);
     }
@@ -63,45 +67,42 @@ export default function TransactionForm() {
 
   const canSubmit = categories.length > 0 && category;
   const percentage = Math.min(Math.round((spent / BUDGET_LIMIT) * 100), 100);
-  
+
   const getProgressColor = () => {
-    if (percentage > 90) return "bg-rose-500";
-    if (percentage > 70) return "bg-amber-500";
-    return "bg-indigo-500";
+    if (percentage > 90) return "var(--expense)";
+    if (percentage > 70) return "var(--accent)";
+    return "var(--accent)";
   };
 
   return (
-    <div className="dashboard-card p-6 animate-in" style={{ animationDelay: "0.25s" }}>
-      <div className="mb-5">
-        <p className="section-label mb-1">Quick Add</p>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">New Transaction</h2>
-        <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">
-          Record income or expense
+    <div className="space-y-5 animate-fade-in">
+      <div>
+        <span className="section-label" style={{ color: "var(--text-muted)" }}>
+          Record
+        </span>
+        <h3 className="text-base font-semibold tracking-tight m-0 mt-1" style={{ color: "var(--text)" }}>
+          New Transaction
+        </h3>
+        <p className="text-xs m-0 mt-0.5" style={{ color: "var(--text-muted)" }}>
+          Record income or expenditure
         </p>
       </div>
 
       {toast && (
-        <div className={`toast mb-4 ${toast.type === "success" ? "toast-success" : "toast-error"}`}>
-          {toast.type === "success" ? (
-            <svg className="checkmark-icon h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          )}
+        <div className={`toast ${toast.type === "success" ? "toast-success" : "toast-error"}`}>
           <span>{toast.message}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="title" className="form-label">Title</label>
+          <label htmlFor="title" className="form-label">
+            Title
+          </label>
           <input
             id="title"
             type="text"
-            placeholder="e.g. Grocery shopping"
+            placeholder="e.g. Consulting retainer, groceries..."
             className="input-field"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -111,14 +112,16 @@ export default function TransactionForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="amount" className="form-label">Amount (₹)</label>
+            <label htmlFor="amount" className="form-label">
+              Amount (₹)
+            </label>
             <input
               id="amount"
               type="number"
               placeholder="0"
               min="0.01"
               step="0.01"
-              className="input-field"
+              className="input-field tabular-nums"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
@@ -126,7 +129,9 @@ export default function TransactionForm() {
           </div>
 
           <div>
-            <label htmlFor="type" className="form-label">Type</label>
+            <label htmlFor="type" className="form-label">
+              Type
+            </label>
             <select
               id="type"
               className="input-field"
@@ -140,7 +145,9 @@ export default function TransactionForm() {
         </div>
 
         <div>
-          <label htmlFor="category" className="form-label">Category</label>
+          <label htmlFor="category" className="form-label">
+            Category
+          </label>
           <CategorySelect
             id="category"
             value={category}
@@ -151,26 +158,32 @@ export default function TransactionForm() {
         <button
           type="submit"
           disabled={submitting || !canSubmit}
-          className="btn-primary w-full py-2.5"
+          className="btn-accent w-full py-2.5 mt-2"
         >
-          {submitting ? "Adding..." : "Add Transaction"}
+          {submitting ? "Processing..." : "Add Transaction"}
         </button>
       </form>
 
       {/* Budget Limit Tracker Widget */}
-      <div className="mt-5 pt-4 border-t border-slate-100/50 dark:border-zinc-800/50 space-y-2">
-        <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-zinc-400">
-          <span>Monthly Spend Progress</span>
-          <span>{percentage}%</span>
+      <div
+        className="pt-4 space-y-2"
+        style={{ borderTop: "1px solid var(--border)" }}
+      >
+        <div className="flex items-center justify-between text-xs font-medium">
+          <span style={{ color: "var(--text-muted)" }}>Monthly Budget Target</span>
+          <span className="tabular-nums" style={{ color: "var(--text)" }}>{percentage}%</span>
         </div>
         <div className="budget-progress-track">
           <div
-            className={`budget-progress-fill ${getProgressColor()}`}
-            style={{ width: `${percentage}%` }}
-          ></div>
+            className="budget-progress-fill"
+            style={{
+              width: `${percentage}%`,
+              backgroundColor: getProgressColor(),
+            }}
+          />
         </div>
-        <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-bold tracking-wide">
-          <span>₹{spent.toLocaleString("en-IN")} Spent</span>
+        <div className="flex items-center justify-between text-[11px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+          <span>₹{spent.toLocaleString("en-IN")} spent</span>
           <span>Limit: ₹{BUDGET_LIMIT.toLocaleString("en-IN")}</span>
         </div>
       </div>

@@ -17,8 +17,10 @@ export function DarkModeProvider({ children }) {
     // Apply dark mode class to document
     if (darkMode) {
       document.documentElement.classList.add("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
+      document.documentElement.setAttribute("data-theme", "light");
     }
     
     // Save preference to localStorage

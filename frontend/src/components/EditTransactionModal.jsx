@@ -36,29 +36,35 @@ export default function EditTransactionModal({ transaction, onClose, onSaved }) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in"
+      style={{ backgroundColor: "rgba(11, 11, 12, 0.75)" }}
       onClick={onClose}
     >
       <div
-        className="dashboard-card w-full max-w-md p-6 shadow-2xl"
+        className="w-full max-w-md p-6 relative animate-slide-up"
+        style={{
+          backgroundColor: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "14px",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between">
           <div>
-            <p className="section-label mb-1">Edit</p>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            <span className="section-label" style={{ color: "var(--text-muted)" }}>
+              Edit
+            </span>
+            <h3 className="text-base font-semibold tracking-tight m-0 mt-1" style={{ color: "var(--text)" }}>
               Update Transaction
-            </h2>
+            </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="btn-icon text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800"
+            className="btn-icon"
             aria-label="Close"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            ✕
           </button>
         </div>
 
@@ -83,7 +89,7 @@ export default function EditTransactionModal({ transaction, onClose, onSaved }) 
                 type="number"
                 min="0.01"
                 step="0.01"
-                className="input-field"
+                className="input-field tabular-nums"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
@@ -114,10 +120,18 @@ export default function EditTransactionModal({ transaction, onClose, onSaved }) 
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-outline flex-1"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={saving || !category} className="btn-primary flex-1">
+            <button
+              type="submit"
+              disabled={saving || !category}
+              className="btn-accent flex-1"
+            >
               {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>

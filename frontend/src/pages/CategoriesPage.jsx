@@ -4,12 +4,14 @@ export default function CategoriesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <p className="section-label self-start">Manage Categories</p>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-          Expense & Income Categories
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-zinc-400">
-          Organize your spending patterns and manage custom categories.
+        <span className="section-label self-start" style={{ color: "var(--text-muted)" }}>
+          Structure
+        </span>
+        <h2 className="text-2xl font-bold tracking-tight m-0 mt-1" style={{ color: "var(--text)" }}>
+          Categories & Taxonomy
+        </h2>
+        <p className="text-xs sm:text-sm m-0 mt-0.5" style={{ color: "var(--text-muted)" }}>
+          Organize spending patterns and configure custom category tags.
         </p>
       </div>
 
