@@ -15,6 +15,13 @@ class User(db.Model):
         cascade="all, delete-orphan"
     )
 
+    budgets = db.relationship(
+        "Budget",
+        backref="user",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -58,5 +65,32 @@ class Transaction(db.Model):
             "category": self.category,
             "type": self.type,
             "date": self.date.isoformat(),
+            "user_id": self.user_id
+        }
+
+
+class Budget(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False)
+    monthly_limit = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Link budget to a user
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id"),
+        nullable=False
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "category", name="uq_user_category_budget"),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "category": self.category,
+            "monthly_limit": self.monthly_limit,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
             "user_id": self.user_id
         }

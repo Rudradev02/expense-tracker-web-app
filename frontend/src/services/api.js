@@ -80,4 +80,17 @@ export const addCategory = (name) =>
 export const deleteCategory = (id) =>
   API.delete(`/categories/${id}`);
 
+export const getBudgets = () => API.get("/budgets");
+
+export const createBudget = (category, monthly_limit) =>
+  API.post("/budgets", { category, monthly_limit });
+
+export const updateBudget = (id, data) =>
+  API.put(`/budgets/${id}`, data);
+
+export const deleteBudget = (id) =>
+  API.delete(`/budgets/${id}`);
+
+export const getBudgetStatus = () => API.get("/budgets/status");
+
 export default API;

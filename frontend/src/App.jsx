@@ -3,6 +3,7 @@ import AppShell from "./components/layout/AppShell";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import CategoriesPage from "./pages/CategoriesPage";
+import BudgetsPage from "./pages/BudgetsPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { CategoriesProvider } from "./context/CategoriesContext";
@@ -53,6 +54,14 @@ function App() {
               element={
                 <ProtectedShell>
                   <CategoriesPage />
+                </ProtectedShell>
+              }
+            />
+            <Route
+              path="/budgets"
+              element={
+                <ProtectedShell>
+                  <BudgetsPage />
                 </ProtectedShell>
               }
             />

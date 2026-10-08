@@ -5,6 +5,7 @@ import { useAppRefresh } from "../context/AppRefreshContext";
 import SummaryCard from "../components/SummaryCard";
 import ExpenseCharts from "../components/ExpenseCharts";
 import TransactionForm from "../components/TransactionForm";
+import BudgetWidget from "../components/BudgetWidget";
 
 export default function Dashboard() {
   const { refreshKeys } = useAppRefresh();
@@ -156,7 +157,13 @@ export default function Dashboard() {
             to="/categories"
             className="btn-outline"
           >
-            Manage Categories
+            Categories
+          </Link>
+          <Link
+            to="/budgets"
+            className="btn-outline"
+          >
+            Budgets
           </Link>
         </div>
       </div>
@@ -198,6 +205,9 @@ export default function Dashboard() {
         expenseByCategory={summary?.expense_by_category}
         monthlyTrends={summary?.monthly_trends}
       />
+
+      {/* Category Budgets Widget */}
+      <BudgetWidget showViewAllLink={true} limitDisplay={4} />
 
       {/* Recent Transactions Widget */}
       <div

@@ -5,6 +5,7 @@ from config import db
 from routes.transaction_routes import transaction_bp
 from routes.category_routes import category_bp
 from routes.auth_routes import auth_bp
+from routes.budget_routes import budget_bp
 import os
 
 # Load environment variables
@@ -33,6 +34,7 @@ db.init_app(app)
 app.register_blueprint(transaction_bp)
 app.register_blueprint(category_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(budget_bp)
 # Default categories
 DEFAULT_CATEGORIES = [
     "Food",
@@ -44,7 +46,7 @@ DEFAULT_CATEGORIES = [
 
 # Create tables and add default categories
 with app.app_context():
-    from models import Transaction, Category
+    from models import Transaction, Category, Budget
 
     # Create tables if they don't exist
     db.create_all()

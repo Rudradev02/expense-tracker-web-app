@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
+from datetime import datetime
 from config import db
-from models import Transaction
+from models import Transaction, Budget
 from utils.auth import token_required
 
 transaction_bp = Blueprint("transaction_bp", __name__)
@@ -67,9 +68,59 @@ def add_transaction(current_user_id):
     db.session.add(transaction)
     db.session.commit()
 
+    # Check if transaction pushes category budget over 80% or 100%
+    budget_alert = None
+    if transaction.type.lower() == "expense":
+        budget = Budget.query.filter(
+            Budget.user_id == current_user_id,
+            Budget.category.ilike(transaction.category)
+        ).first()
+
+        if budget and budget.monthly_limit > 0:
+            now = datetime.utcnow()
+            start_of_month = datetime(now.year, now.month, 1)
+            if now.month == 12:
+                start_of_next_month = datetime(now.year + 1, 1, 1)
+            else:
+                start_of_next_month = datetime(now.year, now.month + 1, 1)
+
+            cat_expenses = (
+                Transaction.query
+                .filter(
+                    Transaction.user_id == current_user_id,
+                    Transaction.type.ilike("expense"),
+                    Transaction.category.ilike(transaction.category),
+                    Transaction.date >= start_of_month,
+                    Transaction.date < start_of_next_month
+                )
+                .all()
+            )
+            total_spent = sum(float(t.amount) for t in cat_expenses)
+            pct = round((total_spent / budget.monthly_limit) * 100, 1)
+
+            if pct >= 100:
+                budget_alert = {
+                    "category": budget.category,
+                    "percentage": pct,
+                    "spent": round(total_spent, 2),
+                    "monthly_limit": budget.monthly_limit,
+                    "level": "exceeded",
+                    "message": f"Budget Exceeded: '{budget.category}' is at {pct}% (₹{total_spent:,.0f} / ₹{budget.monthly_limit:,.0f})"
+                }
+            elif pct >= 80:
+                budget_alert = {
+                    "category": budget.category,
+                    "percentage": pct,
+                    "spent": round(total_spent, 2),
+                    "monthly_limit": budget.monthly_limit,
+                    "level": "warning",
+                    "message": f"Budget Warning: '{budget.category}' is at {pct}% of monthly limit (₹{total_spent:,.0f} / ₹{budget.monthly_limit:,.0f})"
+                }
+
     return jsonify({
         "message": "Transaction added successfully",
-        "transaction": transaction.to_dict()
+        "transaction": transaction.to_dict(),
+        "budget_alert": budget_alert
     }), 201
 
 

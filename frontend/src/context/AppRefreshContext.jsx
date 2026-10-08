@@ -15,6 +15,7 @@ export function AppRefreshProvider({ children }) {
     transactions: 0,
     categories: 0,
     dashboard: 0,
+    budgets: 0,
   });
 
   const triggerRefresh = useCallback((type = 'all') => {
@@ -24,11 +25,12 @@ export function AppRefreshProvider({ children }) {
           transactions: prev.transactions + 1,
           categories: prev.categories + 1,
           dashboard: prev.dashboard + 1,
+          budgets: (prev.budgets || 0) + 1,
         };
       }
       return {
         ...prev,
-        [type]: prev[type] + 1,
+        [type]: (prev[type] || 0) + 1,
       };
     });
   }, []);

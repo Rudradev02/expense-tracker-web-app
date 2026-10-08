@@ -20,6 +20,7 @@
   --on-accent: #1A1407;
   --income: #5FBF9A;
   --expense: #E07A6B;
+  --warning: #D99B43;
 
   /* Typography */
   --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -56,6 +57,7 @@ html:not(.dark) {
   --on-accent: #FFFFFF;
   --income: #2E8A66;
   --expense: #C74B38;
+  --warning: #B87314;
 
   color-scheme: light;
 }
@@ -471,6 +473,12 @@ body {
 .toast-success {
   background-color: var(--surface-2);
   border: 1px solid var(--income);
+  color: var(--text);
+}
+
+.toast-warning {
+  background-color: var(--surface-2);
+  border: 1px solid var(--warning);
   color: var(--text);
 }
 

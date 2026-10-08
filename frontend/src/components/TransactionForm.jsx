@@ -40,22 +40,32 @@ export default function TransactionForm({ onSuccess }) {
     setSubmitting(true);
 
     try {
-      await addTransaction({
+      const res = await addTransaction({
         title,
         amount: Number(amount),
         category,
         type,
       });
 
-      showToast("success", "Transaction recorded successfully.");
+      if (res.data?.budget_alert) {
+        const alert = res.data.budget_alert;
+        showToast(
+          alert.level === "exceeded" ? "error" : "warning",
+          alert.message
+        );
+      } else {
+        showToast("success", "Transaction recorded successfully.");
+      }
+
       triggerRefresh('transactions');
       triggerRefresh('dashboard');
+      triggerRefresh('budgets');
       setTitle("");
       setAmount("");
       setCategory("");
       setType("expense");
       if (onSuccess) {
-        setTimeout(onSuccess, 500);
+        setTimeout(onSuccess, 800);
       }
     } catch (error) {
       console.error(error);
