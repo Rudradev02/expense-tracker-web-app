@@ -10,6 +10,12 @@ export function CategoriesProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refreshCategories = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setCategories([]);
+      setLoading(false);
+      return;
+    }
     try {
       const response = await getCategories();
       setCategories(response.data);

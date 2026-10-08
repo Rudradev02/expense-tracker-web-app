@@ -4,6 +4,16 @@ import DarkModeToggle from "../DarkModeToggle";
 import CommandPalette from "../CommandPalette";
 import TransactionForm from "../TransactionForm";
 import { useAppRefresh } from "../../context/AppRefreshContext";
+import { logoutUser } from "../../services/api";
+
+function getUserInitials(name) {
+  if (!name) return "U";
+  const parts = name.trim().split(/[\s._-]+/);
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.trim().slice(0, 2).toUpperCase();
+}
 
 export default function AppShell({ children }) {
   const location = useLocation();
@@ -25,8 +35,8 @@ export default function AppShell({ children }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    await logoutUser();
     navigate("/login");
   };
 
@@ -79,7 +89,8 @@ export default function AppShell({ children }) {
   ];
 
 
-  const username = localStorage.getItem("username") || "Rudra";
+  const username = localStorage.getItem("username") || "User";
+  const userInitials = getUserInitials(username);
 
   return (
     <div
@@ -198,14 +209,14 @@ export default function AppShell({ children }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold select-none"
                 style={{
                   backgroundColor: "var(--surface-2)",
                   border: "1px solid var(--border)",
-                  color: "var(--text)",
+                  color: "var(--accent)",
                 }}
               >
-                {username.charAt(0).toUpperCase()}
+                {userInitials}
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-medium" style={{ color: "var(--text)" }}>
@@ -297,12 +308,24 @@ export default function AppShell({ children }) {
             <DarkModeToggle />
 
             <div
-              className="hidden sm:flex items-center gap-2 pl-3"
+              className="hidden sm:flex items-center gap-2.5 pl-3"
               style={{ borderLeft: "1px solid var(--border)" }}
             >
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold select-none"
+                style={{
+                  backgroundColor: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--accent)",
+                }}
+                title={username}
+                aria-label={`User avatar for ${username}`}
+              >
+                {userInitials}
+              </div>
               <button
                 onClick={handleLogout}
-                className="text-xs font-medium transition-colors"
+                className="text-xs font-medium transition-colors cursor-pointer"
                 style={{ color: "var(--text-muted)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "var(--expense)")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}

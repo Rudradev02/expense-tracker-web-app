@@ -16,13 +16,17 @@ export default function Login() {
     setError("");
 
     try {
-      await loginUser(email, password);
-      const parsedName = email.split("@")[0];
-      localStorage.setItem("username", parsedName);
+      const res = await loginUser(email, password);
+      const name = res.data?.username || email.split("@")[0];
+      localStorage.setItem("username", name);
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      setError(err?.message || "Invalid email or password");
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Invalid email/username or password";
+      setError(msg);
     } finally {
       setSubmitting(false);
     }

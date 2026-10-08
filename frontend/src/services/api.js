@@ -2,9 +2,10 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: "",
+  withCredentials: true,
 });
 
-// Attach token automatically
+// Attach access token automatically
 API.interceptors.request.use((req) => {
   const token = localStorage.getItem("token");
   if (!req.headers) {
@@ -18,9 +19,11 @@ API.interceptors.request.use((req) => {
   return req;
 });
 
+// Handle responses and automatic token refresh on 401
 API.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
     const status = error.response?.status;
     const message =
       error.response?.data?.message ||
@@ -28,10 +31,44 @@ API.interceptors.response.use(
       error.message ||
       "Request failed";
 
-    if (status === 401) {
-      localStorage.removeItem("token");
-      delete API.defaults.headers.common["Authorization"];
-      window.location.href = "/login";
+    const isAuthRoute =
+      originalRequest?.url?.includes("/login") ||
+      originalRequest?.url?.includes("/register") ||
+      originalRequest?.url?.includes("/refresh");
+
+    // Attempt refresh if 401 and request has not already been retried
+    if (status === 401 && !isAuthRoute && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const refreshResponse = await axios.post("/api/refresh", {}, { withCredentials: true });
+        const newToken = refreshResponse.data?.token;
+
+        if (newToken) {
+          localStorage.setItem("token", newToken);
+          if (refreshResponse.data?.username) {
+            localStorage.setItem("username", refreshResponse.data.username);
+          }
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return API(originalRequest);
+        }
+      } catch (refreshError) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        delete API.defaults.headers.common["Authorization"];
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/register"
+        ) {
+          window.location.href = "/login";
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+
+    if (status === 401 && isAuthRoute) {
+      return Promise.reject({ ...error, message, status });
     }
 
     return Promise.reject({ ...error, message, status });
@@ -39,21 +76,41 @@ API.interceptors.response.use(
 );
 
 export const loginUser = async (email, password) => {
-  const response = await API.post('/api/login', { email, password });
+  const response = await API.post("/api/login", { email, password });
   const token = response.data.token;
-  localStorage.setItem('token', token);
+  localStorage.setItem("token", token);
   if (response.data.username) {
-    localStorage.setItem('username', response.data.username);
+    localStorage.setItem("username", response.data.username);
   }
-  // Set default Authorization header for subsequent requests
-  API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  API.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   return response;
 };
 
 export const registerUser = async (username, email, password) => {
-  const response = await API.post('/api/register', { username, email, password });
+  const response = await API.post("/api/register", { username, email, password });
+  if (response.data.token) {
+    localStorage.setItem("token", response.data.token);
+    if (response.data.username) {
+      localStorage.setItem("username", response.data.username);
+    }
+    API.defaults.headers.common["Authorization"] = `Bearer ${response.data.token}`;
+  }
   return response;
 };
+
+export const logoutUser = async () => {
+  try {
+    await API.post("/api/logout");
+  } catch (err) {
+    console.warn("Logout error:", err);
+  } finally {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    delete API.defaults.headers.common["Authorization"];
+  }
+};
+
+export const getCurrentUser = () => API.get("/api/me");
 
 export const getSummary = (params = {}) => API.get("/summary", { params });
 

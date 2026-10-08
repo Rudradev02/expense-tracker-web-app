@@ -15,7 +15,7 @@ load_dotenv()
 
 # Create Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # Database configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -39,36 +39,19 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(budget_bp)
 app.register_blueprint(recurring_bp)
 
-# Default categories
-DEFAULT_CATEGORIES = [
-    "Food",
-    "Salary",
-    "Transport",
-    "Shopping",
-    "Bills"
-]
-
-# Create tables and add default categories
+# Create tables, run migration, and seed categories
 with app.app_context():
-    from models import Transaction, Category, Budget, RecurringRule
+    from models import Transaction, Category, Budget, RecurringRule, User
+    from utils.migration import run_data_migration
 
     # Create tables if they don't exist
     db.create_all()
 
-    # Safe schema migration: ensure recurring_rule_id column exists on transaction table
+    # Safe schema migration: assign existing data to default user & add foreign keys
     try:
-        from sqlalchemy import text
-        with db.engine.connect() as conn:
-            conn.execute(text('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS recurring_rule_id INTEGER REFERENCES "recurring_rules"(id) ON DELETE SET NULL;'))
-            conn.commit()
+        run_data_migration(app)
     except Exception as e:
         app.logger.info(f"Schema migration note: {e}")
-
-    # Add default categories only once
-    if Category.query.count() == 0:
-        for name in DEFAULT_CATEGORIES:
-            db.session.add(Category(name=name))
-        db.session.commit()
 
     # Process due recurring transactions on startup
     try:

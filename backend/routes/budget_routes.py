@@ -163,7 +163,7 @@ def get_budget_status(current_user_id):
     budgets = Budget.query.filter_by(user_id=current_user_id).all()
     budget_dict = {b.category.strip().title(): b for b in budgets}
 
-    system_categories = Category.query.order_by(Category.name).all()
+    system_categories = Category.query.filter_by(user_id=current_user_id).order_by(Category.name).all()
     all_cat_names = sorted(list(set(
         [c.name.strip().title() for c in system_categories] +
         list(budget_dict.keys()) +

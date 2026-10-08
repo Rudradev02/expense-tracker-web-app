@@ -29,6 +29,13 @@ class User(db.Model):
         cascade="all, delete-orphan"
     )
 
+    categories = db.relationship(
+        "Category",
+        backref="user",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -39,13 +46,23 @@ class User(db.Model):
 
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id"),
+        nullable=True
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "name", name="uq_user_category_name"),
+    )
 
     def to_dict(self):
         return {
             "id": self.id,
-            "name": self.name
+            "name": self.name,
+            "user_id": self.user_id
         }
 
 

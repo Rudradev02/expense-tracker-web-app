@@ -7,22 +7,47 @@ export default function Register() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // Password validation checks
+  const hasMinLength = password.length >= 8;
+  const hasLetter = /[a-zA-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const passwordsMatch = password && confirmPassword && password === confirmPassword;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
     setError("");
 
+    if (!hasMinLength || !hasLetter || !hasNumber) {
+      setError("Password must be at least 8 characters long and contain both letters and numbers.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please re-enter.");
+      return;
+    }
+
+    setSubmitting(true);
+
     try {
-      await registerUser(username, email, password);
-      alert("Registration successful! Please sign in.");
-      navigate("/login");
+      const res = await registerUser(username, email, password);
+      if (res.data?.token) {
+        navigate("/dashboard");
+      } else {
+        navigate("/login");
+      }
     } catch (err) {
       console.error(err);
-      setError(err?.message || "Registration failed. Email or username might be taken.");
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Registration failed. Email or username might already be in use.";
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -145,11 +170,13 @@ export default function Register() {
               <input
                 id="username"
                 type="text"
-                placeholder="Rudra"
+                placeholder="e.g. Alex Vance"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 className="input-field"
+                minLength={3}
+                maxLength={50}
               />
             </div>
 
@@ -175,20 +202,48 @@ export default function Register() {
               <input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="At least 8 characters (letters & numbers)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="input-field"
               />
+              <div className="flex items-center gap-3 mt-1.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
+                <span style={{ color: hasMinLength ? "var(--income)" : "var(--text-muted)" }}>
+                  {hasMinLength ? "✓" : "○"} 8+ chars
+                </span>
+                <span style={{ color: hasLetter && hasNumber ? "var(--income)" : "var(--text-muted)" }}>
+                  {hasLetter && hasNumber ? "✓" : "○"} letters & numbers
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="form-label">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="input-field"
+              />
+              {confirmPassword && (
+                <div className="mt-1 text-[11px]" style={{ color: passwordsMatch ? "var(--income)" : "var(--expense)" }}>
+                  {passwordsMatch ? "✓ Passwords match" : "✕ Passwords do not match"}
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="btn-accent w-full py-2.5 mt-2"
+              className="btn-accent w-full py-2.5 mt-2 cursor-pointer"
             >
-              {submitting ? "Registering..." : "Create Account"}
+              {submitting ? "Creating Workspace..." : "Create Account"}
             </button>
           </form>
 
