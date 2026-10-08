@@ -1,6 +1,9 @@
 import os
 import re
 import shutil
+import platform
+import subprocess
+import tempfile
 from datetime import datetime, date
 from PIL import Image, ImageEnhance, ImageFilter
 import pytesseract
@@ -24,10 +27,67 @@ for p in TESSERACT_CANDIDATE_PATHS:
         pytesseract.pytesseract.tesseract_cmd = p
         break
 
+WIN_OCR_SCRIPT = os.path.join(os.path.dirname(__file__), "win_ocr.ps1")
+
 
 def is_tesseract_available():
     """Check if Tesseract binary is accessible on the host."""
     return TESSERACT_EXECUTABLE is not None or shutil.which("tesseract") is not None
+
+
+def is_windows_ocr_available():
+    """Check if native Windows Media OCR runner is available on Windows host."""
+    return platform.system() == "Windows" and os.path.exists(WIN_OCR_SCRIPT)
+
+
+def is_ocr_available():
+    """Check if either Tesseract or Windows Media OCR is accessible."""
+    return is_tesseract_available() or is_windows_ocr_available()
+
+
+def run_windows_ocr(image):
+    """
+    Run native Windows.Media.Ocr.OcrEngine via PowerShell helper script.
+    Zero-install, built-in on Windows 10 and 11.
+    """
+    if not is_windows_ocr_available():
+        return None
+
+    temp_path = None
+    try:
+        temp_dir = os.path.dirname(__file__)
+        with tempfile.NamedTemporaryFile(suffix=".png", dir=temp_dir, delete=False) as tf:
+            temp_path = tf.name
+            image.save(tf, format="PNG")
+
+        cmd = [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            WIN_OCR_SCRIPT,
+            "-ImagePath",
+            temp_path,
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        output = proc.stdout or ""
+        start_marker = "---OCR_START---"
+        end_marker = "---OCR_END---"
+        if start_marker in output and end_marker in output:
+            start_pos = output.find(start_marker) + len(start_marker)
+            end_pos = output.find(end_marker)
+            return output[start_pos:end_pos].strip()
+        return None
+    except Exception:
+        return None
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 
 def preprocess_image(image):
@@ -209,60 +269,28 @@ def extract_date(text):
     return today.strftime("%Y-%m-%d"), 0.40
 
 
-def parse_receipt_image(file_storage):
+def parse_receipt_text(raw_text):
     """
-    Processes an uploaded image file into extracted transaction fields.
-    Does not save the image to disk or database.
+    Extracts transaction fields (merchant, amount, date, category)
+    from extracted receipt text string using heuristic rules.
     Returns: dictionary with parsed fields, confidence scores, and low_confidence flags.
     """
-    # 1. Open image from stream with Pillow
-    try:
-        image = Image.open(file_storage.stream)
-    except Exception as e:
+    if not raw_text or len(raw_text.strip()) < 5:
         return {
             "success": False,
-            "error": f"Invalid image format: {str(e)}",
-            "fallback_to_manual": True
-        }
-
-    # 2. Check Tesseract availability
-    if not is_tesseract_available():
-        return {
-            "success": False,
-            "error": "Tesseract OCR engine is not installed or configured on the server.",
-            "friendly_message": "Tesseract OCR is not installed on this host. You can enter transaction details manually.",
-            "tesseract_missing": True,
-            "fallback_to_manual": True
-        }
-
-    # 3. Preprocess and run OCR
-    try:
-        processed = preprocess_image(image)
-        raw_text = pytesseract.image_to_string(processed, lang="eng")
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"OCR extraction failed: {str(e)}",
-            "friendly_message": "Could not extract text from this receipt image. Please enter details manually.",
+            "error": "No legible text found in receipt.",
+            "friendly_message": "Could not detect clear text on this receipt. Please enter details manually.",
             "fallback_to_manual": True
         }
 
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
 
-    if not lines or len(raw_text.strip()) < 10:
-        return {
-            "success": False,
-            "error": "No legible text found in image.",
-            "friendly_message": "The uploaded image appears blurry or empty. Please enter details manually.",
-            "fallback_to_manual": True
-        }
-
-    # 4. Extract fields using heuristics
+    # Extract fields using heuristics
     merchant, merchant_conf = extract_merchant(lines)
     amount, amount_conf = extract_amount(lines)
     tx_date, date_conf = extract_date(raw_text)
 
-    # 5. Extract suggested category from merchant/receipt text
+    # Extract suggested category from merchant / receipt text
     suggested_category = "General"
     category_conf = 0.50
     full_lower = raw_text.lower()
@@ -297,3 +325,59 @@ def parse_receipt_image(file_storage):
         "low_confidence_fields": low_confidence_fields,
         "raw_text_snippet": raw_text[:300].strip(),
     }
+
+
+def parse_receipt_image(file_storage):
+    """
+    Processes an uploaded image file into extracted transaction fields.
+    Tries Tesseract OCR first, then falls back to native Windows Media OCR.
+    Does not save the image to disk or database.
+    """
+    # 1. Open image from stream with Pillow
+    try:
+        image = Image.open(file_storage.stream)
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Invalid image format: {str(e)}",
+            "fallback_to_manual": True
+        }
+
+    # 2. Check if any OCR engine is available
+    if not is_ocr_available():
+        return {
+            "success": False,
+            "error": "No OCR engine available on this host.",
+            "friendly_message": "Tesseract OCR is not installed on this host. You can enter transaction details manually or scan with browser OCR.",
+            "tesseract_missing": True,
+            "fallback_to_manual": True
+        }
+
+    raw_text = None
+
+    # 3. Try Tesseract OCR if binary was found
+    if is_tesseract_available():
+        try:
+            processed = preprocess_image(image)
+            raw_text = pytesseract.image_to_string(processed, lang="eng")
+        except Exception:
+            raw_text = None
+
+    # 4. Fall back to native Windows Media OCR if Tesseract unavailable or returned no text
+    if (not raw_text or len(raw_text.strip()) < 5) and is_windows_ocr_available():
+        try:
+            raw_text = run_windows_ocr(image)
+        except Exception:
+            raw_text = None
+
+    if not raw_text or len(raw_text.strip()) < 5:
+        return {
+            "success": False,
+            "error": "No legible text found in image.",
+            "friendly_message": "The uploaded receipt appears blurry or empty. Please enter details manually.",
+            "fallback_to_manual": True
+        }
+
+    # 5. Extract fields using heuristic rules
+    return parse_receipt_text(raw_text)
+

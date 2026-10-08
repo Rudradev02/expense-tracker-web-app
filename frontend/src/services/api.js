@@ -186,12 +186,18 @@ export const getForecast = () => API.get("/forecast");
 export const suggestCategory = (description) =>
   API.get("/suggest-category", { params: { description } });
 
-export const scanReceipt = (formData) =>
-  API.post("/scan-receipt", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+export const scanReceipt = (data) => {
+  if (data instanceof FormData) {
+    return API.post("/scan-receipt", data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  }
+  return API.post("/scan-receipt", data);
+};
+
+export const parseReceiptText = (text) => API.post("/scan-receipt", { text });
 
 export const loadSampleData = () => API.post("/transactions/sample-data");
 

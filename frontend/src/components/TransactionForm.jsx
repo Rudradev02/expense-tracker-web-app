@@ -111,6 +111,42 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
     }
   }, [transaction]);
 
+  const applyExtractedReceipt = (data, source = "OCR") => {
+    if (data.merchant) {
+      setTitle(data.merchant);
+      titleTouchedRef.current = true;
+    }
+    if (data.amount !== null && data.amount !== undefined) {
+      setAmount(data.amount);
+    }
+    if (data.date) {
+      setDate(data.date);
+    }
+    if (data.category) {
+      setCategory(data.category);
+      setSuggestedCategory(data.category);
+      setSuggestionConfidence(data.confidences?.category || 0.85);
+    }
+    if (data.type) {
+      setType(data.type);
+    }
+
+    const lowConf = data.low_confidence_fields || [];
+    setLowConfidenceFields(lowConf);
+
+    if (lowConf.length > 0) {
+      setScanNotice({
+        type: "warning",
+        message: `Receipt scanned (${source}). Please double-check highlighted ${lowConf.join(", ")} before saving.`,
+      });
+    } else {
+      setScanNotice({
+        type: "success",
+        message: `Receipt scanned (${source}) and fields prefilled.`,
+      });
+    }
+  };
+
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -136,53 +172,76 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
       const res = await scanReceipt(formData);
       const data = res.data;
 
-      if (!data.success) {
-        setScanNotice({
-          type: "warning",
-          message:
-            data.friendly_message ||
-            data.error ||
-            "Could not extract text from receipt. You can enter details manually.",
-        });
+      if (data?.success) {
+        applyExtractedReceipt(data, "Server OCR");
         return;
       }
 
-      // Prefill extracted values
-      if (data.merchant) {
-        setTitle(data.merchant);
-        titleTouchedRef.current = true;
-      }
-      if (data.amount !== null && data.amount !== undefined) {
-        setAmount(data.amount);
-      }
-      if (data.date) {
-        setDate(data.date);
-      }
-      if (data.category) {
-        setCategory(data.category);
-        setSuggestedCategory(data.category);
-        setSuggestionConfidence(data.confidences?.category || 0.85);
-      }
-      if (data.type) {
-        setType(data.type);
+      // If server OCR is unavailable on this host, try client-side browser OCR fallback
+      if (data?.tesseract_missing) {
+        setScanNotice({
+          type: "info",
+          message: "Host OCR unavailable. Scanning receipt locally in browser...",
+        });
+
+        try {
+          const { createWorker } = await import(
+            /* @vite-ignore */ "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js"
+          );
+          const worker = await createWorker("eng");
+          const ret = await worker.recognize(file);
+          await worker.terminate();
+
+          const extractedText = ret?.data?.text;
+          if (extractedText && extractedText.trim().length >= 5) {
+            const textRes = await scanReceipt({ text: extractedText });
+            const textData = textRes.data;
+            if (textData?.success) {
+              applyExtractedReceipt(textData, "Browser OCR");
+              return;
+            }
+          }
+        } catch (clientOcrErr) {
+          console.warn("Client-side OCR fallback failed:", clientOcrErr);
+        }
       }
 
-      const lowConf = data.low_confidence_fields || [];
-      setLowConfidenceFields(lowConf);
-
-      if (lowConf.length > 0) {
-        setScanNotice({
-          type: "warning",
-          message: `Receipt scanned. Please double-check highlighted ${lowConf.join(", ")} before saving.`,
-        });
-      } else {
-        setScanNotice({
-          type: "success",
-          message: "Receipt scanned and fields prefilled with high confidence.",
-        });
-      }
+      setScanNotice({
+        type: "warning",
+        message:
+          data?.friendly_message ||
+          data?.error ||
+          "Could not extract text from receipt. You can enter details manually.",
+      });
     } catch (err) {
       console.error("Receipt scan failed:", err);
+
+      // Try browser OCR fallback if server error occurs
+      try {
+        setScanNotice({
+          type: "info",
+          message: "Server scan error. Attempting local scan in browser...",
+        });
+        const { createWorker } = await import(
+          /* @vite-ignore */ "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js"
+        );
+        const worker = await createWorker("eng");
+        const ret = await worker.recognize(file);
+        await worker.terminate();
+
+        const extractedText = ret?.data?.text;
+        if (extractedText && extractedText.trim().length >= 5) {
+          const textRes = await scanReceipt({ text: extractedText });
+          const textData = textRes.data;
+          if (textData?.success) {
+            applyExtractedReceipt(textData, "Browser OCR");
+            return;
+          }
+        }
+      } catch (browserErr) {
+        // Fall through to error notice
+      }
+
       setScanNotice({
         type: "warning",
         message:
@@ -495,19 +554,25 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
                 ? "rgba(224, 122, 107, 0.12)"
                 : scanNotice.type === "warning"
                 ? "rgba(212, 180, 131, 0.12)"
-                : "var(--surface-2)",
+                : scanNotice.type === "info"
+                ? "rgba(212, 180, 131, 0.08)"
+                : "rgba(107, 191, 142, 0.12)",
             border:
               scanNotice.type === "error"
                 ? "1px solid rgba(224, 122, 107, 0.3)"
                 : scanNotice.type === "warning"
                 ? "1px solid rgba(212, 180, 131, 0.3)"
-                : "1px solid var(--border)",
+                : scanNotice.type === "info"
+                ? "1px solid var(--border)"
+                : "1px solid rgba(107, 191, 142, 0.3)",
             color:
               scanNotice.type === "error"
                 ? "var(--expense)"
                 : scanNotice.type === "warning"
                 ? "var(--accent)"
-                : "var(--text)",
+                : scanNotice.type === "info"
+                ? "var(--text)"
+                : "var(--income)",
           }}
         >
           <span className="leading-relaxed">{scanNotice.message}</span>

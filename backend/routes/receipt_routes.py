@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from utils.auth import token_required
-from utils.receipt_parser import parse_receipt_image
+from utils.receipt_parser import parse_receipt_image, parse_receipt_text
 
 receipt_bp = Blueprint("receipt_bp", __name__)
 
@@ -23,10 +23,22 @@ def is_allowed_file(filename, mimetype):
 @token_required
 def scan_receipt(current_user_id):
     """
-    Accepts an uploaded receipt image, performs in-memory OCR extraction,
+    Accepts an uploaded receipt image or pre-extracted OCR text,
     and returns predicted transaction fields (merchant, amount, date, category).
     Does NOT store the image on disk or database.
     """
+    # 0. Check for pre-extracted text (from browser OCR or direct text input)
+    raw_text = None
+    if request.is_json:
+        data = request.get_json() or {}
+        raw_text = data.get("text")
+    elif request.form.get("text"):
+        raw_text = request.form.get("text")
+
+    if raw_text and isinstance(raw_text, str) and len(raw_text.strip()) >= 5:
+        result = parse_receipt_text(raw_text)
+        return jsonify(result), 200
+
     # 1. Check for file in request
     uploaded_file = None
     for field_name in ["file", "image", "receipt"]:
