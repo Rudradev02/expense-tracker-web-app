@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DarkModeToggle from "../DarkModeToggle";
 import CommandPalette from "../CommandPalette";
+import InstallAppButton from "../InstallAppButton";
 import TransactionForm from "../TransactionForm";
 import { useAppRefresh } from "../../context/AppRefreshContext";
 import { logoutUser } from "../../services/api";
@@ -215,6 +216,10 @@ export default function AppShell({ children }) {
             backgroundColor: "var(--bg)",
           }}
         >
+          <div className="mb-3">
+            <InstallAppButton variant="sidebar" />
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div
@@ -313,6 +318,8 @@ export default function AppShell({ children }) {
                 {typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl+K"}
               </kbd>
             </button>
+
+            <InstallAppButton variant="header" />
 
             <DarkModeToggle />
 

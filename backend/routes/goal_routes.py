@@ -70,6 +70,7 @@ def enrich_goal(goal):
 # LIST ALL GOALS
 # ─────────────────────────────────────────────────────────────
 @goal_bp.route("/goals", methods=["GET"])
+@goal_bp.route("/api/goals", methods=["GET"])
 @token_required
 def get_goals(current_user_id):
     goals = (
@@ -88,6 +89,7 @@ def get_goals(current_user_id):
 # CREATE GOAL
 # ─────────────────────────────────────────────────────────────
 @goal_bp.route("/goals", methods=["POST"])
+@goal_bp.route("/api/goals", methods=["POST"])
 @token_required
 def create_goal(current_user_id):
     data = request.get_json() or {}
@@ -146,6 +148,7 @@ def create_goal(current_user_id):
 # GET SINGLE GOAL
 # ─────────────────────────────────────────────────────────────
 @goal_bp.route("/goals/<int:id>", methods=["GET"])
+@goal_bp.route("/api/goals/<int:id>", methods=["GET"])
 @token_required
 def get_goal(current_user_id, id):
     goal = Goal.query.filter_by(id=id, user_id=current_user_id).first()
@@ -159,6 +162,7 @@ def get_goal(current_user_id, id):
 # UPDATE GOAL
 # ─────────────────────────────────────────────────────────────
 @goal_bp.route("/goals/<int:id>", methods=["PUT"])
+@goal_bp.route("/api/goals/<int:id>", methods=["PUT"])
 @token_required
 def update_goal(current_user_id, id):
     goal = Goal.query.filter_by(id=id, user_id=current_user_id).first()
@@ -212,6 +216,7 @@ def update_goal(current_user_id, id):
 # DELETE GOAL
 # ─────────────────────────────────────────────────────────────
 @goal_bp.route("/goals/<int:id>", methods=["DELETE"])
+@goal_bp.route("/api/goals/<int:id>", methods=["DELETE"])
 @token_required
 def delete_goal(current_user_id, id):
     goal = Goal.query.filter_by(id=id, user_id=current_user_id).first()
@@ -228,6 +233,7 @@ def delete_goal(current_user_id, id):
 # CONTRIBUTE TO GOAL
 # ─────────────────────────────────────────────────────────────
 @goal_bp.route("/goals/<int:id>/contribute", methods=["POST"])
+@goal_bp.route("/api/goals/<int:id>/contribute", methods=["POST"])
 @token_required
 def contribute_to_goal(current_user_id, id):
     goal = Goal.query.filter_by(id=id, user_id=current_user_id).first()

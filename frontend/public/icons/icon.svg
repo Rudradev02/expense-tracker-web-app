@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- Obsidian Background -->
+  <rect width="512" height="512" fill="#0B0B0C"/>
+  <!-- Rounded Card Surface -->
+  <rect x="42" y="42" width="428" height="428" rx="96" fill="#18181B" stroke="#27272A" stroke-width="6"/>
+  <!-- Champagne Currency Symbol -->
+  <text x="256" y="325" font-family="Arial, system-ui, -apple-system, sans-serif" font-size="220" font-weight="bold" fill="#D4B483" text-anchor="middle">₹</text>
+</svg>
