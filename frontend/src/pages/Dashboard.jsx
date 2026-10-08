@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import { getSummary, getTransactions } from "../services/api";
+import { getSummary, getTransactions, deleteTransaction } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import SummaryCard from "../components/SummaryCard";
 import ExpenseCharts from "../components/ExpenseCharts";
@@ -8,12 +8,93 @@ import TransactionForm from "../components/TransactionForm";
 import BudgetWidget from "../components/BudgetWidget";
 
 export default function Dashboard() {
-  const { refreshKeys } = useAppRefresh();
+  const { refreshKeys, triggerRefresh } = useAppRefresh();
   const [summary, setSummary] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalTransaction, setModalTransaction] = useState(null);
+
+  // Soft delete state & ref
+  const [deleteToast, setDeleteToast] = useState(null);
+  const pendingDeleteRef = useRef(null);
+
+  // Soft delete handler (6 seconds undo toast)
+  const handleInitiateDelete = useCallback(
+    (tx) => {
+      if (pendingDeleteRef.current) {
+        const prev = pendingDeleteRef.current;
+        clearTimeout(prev.timerId);
+        deleteTransaction(prev.transaction.id)
+          .then(() => {
+            triggerRefresh("transactions");
+            triggerRefresh("budgets");
+          })
+          .catch(console.error);
+      }
+
+      // Remove from UI immediately
+      setRecentTransactions((prev) => prev.filter((item) => item.id !== tx.id));
+
+      const timerId = setTimeout(async () => {
+        try {
+          await deleteTransaction(tx.id);
+          triggerRefresh("transactions");
+          triggerRefresh("budgets");
+          triggerRefresh("dashboard");
+        } catch (err) {
+          console.error("Failed to delete transaction:", err);
+          setRecentTransactions((prev) => [tx, ...prev]);
+        } finally {
+          setDeleteToast(null);
+          pendingDeleteRef.current = null;
+        }
+      }, 6000);
+
+      const pending = { transaction: tx, timerId };
+      pendingDeleteRef.current = pending;
+      setDeleteToast(pending);
+    },
+    [triggerRefresh]
+  );
+
+  const handleUndoDelete = useCallback(() => {
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timerId);
+      const restored = pendingDeleteRef.current.transaction;
+      setRecentTransactions((prev) => [restored, ...prev]);
+      pendingDeleteRef.current = null;
+      setDeleteToast(null);
+    }
+  }, []);
+
+  const handleDismissDeleteToast = useCallback(() => {
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timerId);
+      const tx = pendingDeleteRef.current.transaction;
+      deleteTransaction(tx.id)
+        .then(() => {
+          triggerRefresh("transactions");
+          triggerRefresh("budgets");
+          triggerRefresh("dashboard");
+        })
+        .catch(console.error);
+      pendingDeleteRef.current = null;
+      setDeleteToast(null);
+    }
+  }, [triggerRefresh]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingDeleteRef.current) {
+        clearTimeout(pendingDeleteRef.current.timerId);
+        deleteTransaction(pendingDeleteRef.current.transaction.id).catch(
+          console.error
+        );
+      }
+    };
+  }, []);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -150,7 +231,10 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setModalTransaction(null);
+              setShowModal(true);
+            }}
             className="btn-accent"
           >
             <span className="text-base leading-none">+</span>
@@ -258,6 +342,7 @@ export default function Dashboard() {
                   <th>Category</th>
                   <th>Type</th>
                   <th style={{ textAlign: "right" }}>Amount</th>
+                  <th style={{ textAlign: "right", minWidth: "80px" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,6 +371,33 @@ export default function Dashboard() {
                       >
                         {isIncome ? "+" : "-"}₹{Number(tx.amount).toLocaleString("en-IN")}
                       </td>
+                      <td style={{ textAlign: "right" }}>
+                        <div className="table-row-actions">
+                          <button
+                            onClick={() => {
+                              setModalTransaction(tx);
+                              setShowModal(true);
+                            }}
+                            className="btn-icon"
+                            title="Edit transaction"
+                            aria-label={`Edit ${tx.title}`}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleInitiateDelete(tx)}
+                            className="btn-icon btn-icon-danger"
+                            title="Delete transaction"
+                            aria-label={`Delete ${tx.title}`}
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -295,12 +407,15 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Add Transaction Modal Overlay */}
-      {showAddModal && (
+      {/* Unified Add / Edit Transaction Modal Overlay */}
+      {showModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in"
           style={{ backgroundColor: "rgba(11, 11, 12, 0.75)" }}
-          onClick={() => setShowAddModal(false)}
+          onClick={() => {
+            setShowModal(false);
+            setModalTransaction(null);
+          }}
         >
           <div
             className="w-full max-w-lg p-6 relative animate-slide-up"
@@ -312,14 +427,53 @@ export default function Dashboard() {
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setShowAddModal(false)}
+              onClick={() => {
+                setShowModal(false);
+                setModalTransaction(null);
+              }}
               className="btn-icon absolute top-4 right-4"
               aria-label="Close modal"
             >
               ✕
             </button>
-            <TransactionForm onSuccess={() => setShowAddModal(false)} />
+            <TransactionForm
+              transaction={modalTransaction}
+              onSuccess={() => {
+                setShowModal(false);
+                setModalTransaction(null);
+                fetchDashboardData();
+              }}
+              onCancel={() => {
+                setShowModal(false);
+                setModalTransaction(null);
+              }}
+            />
           </div>
+        </div>
+      )}
+
+      {/* 6-Second Soft Delete Undo Toast */}
+      {deleteToast && (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <div className="flex items-center gap-2">
+            <span>Transaction deleted.</span>
+            <button
+              type="button"
+              onClick={handleUndoDelete}
+              className="undo-toast-btn"
+              id="btn-undo-delete-dashboard"
+            >
+              Undo
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleDismissDeleteToast}
+            className="undo-toast-close"
+            aria-label="Dismiss delete toast"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

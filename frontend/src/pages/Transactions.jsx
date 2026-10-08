@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getTransactions } from "../services/api";
+import { getTransactions, deleteTransaction } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import TransactionTable from "../components/TransactionTable";
@@ -9,7 +9,7 @@ import TransactionForm from "../components/TransactionForm";
 export default function Transactions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { categories } = useCategories();
-  const { refreshKeys } = useAppRefresh();
+  const { refreshKeys, triggerRefresh } = useAppRefresh();
 
   // Read URL query parameters
   const urlSearch = searchParams.get("search") || searchParams.get("q") || "";
@@ -33,8 +33,13 @@ export default function Transactions() {
   // Local state for debounced search and controls
   const [searchInput, setSearchInput] = useState(urlSearch);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalTransaction, setModalTransaction] = useState(null);
   const [showFilterDetails, setShowFilterDetails] = useState(false);
+
+  // Soft delete state & ref
+  const [deleteToast, setDeleteToast] = useState(null);
+  const pendingDeleteRef = useRef(null);
 
   // Data fetching states
   const [transactions, setTransactions] = useState([]);
@@ -42,6 +47,83 @@ export default function Transactions() {
   const [error, setError] = useState(null);
 
   const categoryDropdownRef = useRef(null);
+
+  // Soft delete handler (6 seconds undo toast)
+  const handleInitiateDelete = useCallback(
+    (tx) => {
+      // If there is already a pending delete, commit it immediately
+      if (pendingDeleteRef.current) {
+        const prev = pendingDeleteRef.current;
+        clearTimeout(prev.timerId);
+        deleteTransaction(prev.transaction.id)
+          .then(() => {
+            triggerRefresh("dashboard");
+            triggerRefresh("budgets");
+          })
+          .catch(console.error);
+      }
+
+      // Soft delete: remove immediately from UI
+      setTransactions((prev) => prev.filter((item) => item.id !== tx.id));
+
+      // Set 6-second timer
+      const timerId = setTimeout(async () => {
+        try {
+          await deleteTransaction(tx.id);
+          triggerRefresh("dashboard");
+          triggerRefresh("budgets");
+        } catch (err) {
+          console.error("Failed to delete transaction on server:", err);
+          setTransactions((prev) => [tx, ...prev]);
+        } finally {
+          setDeleteToast(null);
+          pendingDeleteRef.current = null;
+        }
+      }, 6000);
+
+      const pending = { transaction: tx, timerId };
+      pendingDeleteRef.current = pending;
+      setDeleteToast(pending);
+    },
+    [triggerRefresh]
+  );
+
+  const handleUndoDelete = useCallback(() => {
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timerId);
+      const restored = pendingDeleteRef.current.transaction;
+      setTransactions((prev) => [restored, ...prev]);
+      pendingDeleteRef.current = null;
+      setDeleteToast(null);
+    }
+  }, []);
+
+  const handleDismissDeleteToast = useCallback(() => {
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timerId);
+      const tx = pendingDeleteRef.current.transaction;
+      deleteTransaction(tx.id)
+        .then(() => {
+          triggerRefresh("dashboard");
+          triggerRefresh("budgets");
+        })
+        .catch(console.error);
+      pendingDeleteRef.current = null;
+      setDeleteToast(null);
+    }
+  }, [triggerRefresh]);
+
+  // Cleanup on unmount: ensure pending delete is executed on server
+  useEffect(() => {
+    return () => {
+      if (pendingDeleteRef.current) {
+        clearTimeout(pendingDeleteRef.current.timerId);
+        deleteTransaction(pendingDeleteRef.current.transaction.id).catch(
+          console.error
+        );
+      }
+    };
+  }, []);
 
   // Sync search input when URL changes (e.g. browser history or reset)
   useEffect(() => {
@@ -239,8 +321,12 @@ export default function Transactions() {
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setModalTransaction(null);
+            setShowModal(true);
+          }}
           className="btn-accent self-start sm:self-auto"
+          id="btn-add-transaction"
         >
           <span className="text-base leading-none">+</span>
           <span>Add Transaction</span>
@@ -663,7 +749,7 @@ export default function Transactions() {
           </div>
         )}
 
-        {/* Ledger Table with sorting and filtered empty state */}
+        {/* Ledger Table with sorting, filtered empty state, and row actions */}
         <TransactionTable
           transactions={transactions}
           refreshTransactions={fetchTransactions}
@@ -673,15 +759,23 @@ export default function Transactions() {
           isFiltered={isFiltered}
           onClearFilters={handleClearAllFilters}
           loading={loading}
+          onEdit={(t) => {
+            setModalTransaction(t);
+            setShowModal(true);
+          }}
+          onDelete={handleInitiateDelete}
         />
       </section>
 
-      {/* Add Transaction Modal Overlay */}
-      {showAddModal && (
+      {/* Unified Add / Edit Transaction Modal Overlay */}
+      {showModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in"
           style={{ backgroundColor: "rgba(11, 11, 12, 0.75)" }}
-          onClick={() => setShowAddModal(false)}
+          onClick={() => {
+            setShowModal(false);
+            setModalTransaction(null);
+          }}
         >
           <div
             className="w-full max-w-lg p-6 relative animate-slide-up"
@@ -693,14 +787,53 @@ export default function Transactions() {
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setShowAddModal(false)}
+              onClick={() => {
+                setShowModal(false);
+                setModalTransaction(null);
+              }}
               className="btn-icon absolute top-4 right-4"
               aria-label="Close modal"
             >
               ✕
             </button>
-            <TransactionForm onSuccess={() => setShowAddModal(false)} />
+            <TransactionForm
+              transaction={modalTransaction}
+              onSuccess={() => {
+                setShowModal(false);
+                setModalTransaction(null);
+                fetchTransactions();
+              }}
+              onCancel={() => {
+                setShowModal(false);
+                setModalTransaction(null);
+              }}
+            />
           </div>
+        </div>
+      )}
+
+      {/* 6-Second Soft Delete Undo Toast */}
+      {deleteToast && (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <div className="flex items-center gap-2">
+            <span>Transaction deleted.</span>
+            <button
+              type="button"
+              onClick={handleUndoDelete}
+              className="undo-toast-btn"
+              id="btn-undo-delete"
+            >
+              Undo
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleDismissDeleteToast}
+            className="undo-toast-close"
+            aria-label="Dismiss delete toast"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

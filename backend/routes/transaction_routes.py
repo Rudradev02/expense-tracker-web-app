@@ -214,7 +214,7 @@ def add_transaction(current_user_id):
 
 
 # UPDATE transaction
-@transaction_bp.route("/transactions/<int:id>", methods=["PUT"])
+@transaction_bp.route("/transactions/<int:id>", methods=["PUT", "PATCH"])
 @token_required
 def update_transaction(current_user_id, id):
     transaction = Transaction.query.filter_by(
@@ -225,27 +225,96 @@ def update_transaction(current_user_id, id):
     if not transaction:
         return jsonify({"error": "Transaction not found"}), 404
 
-    data = request.get_json()
+    data = request.get_json() or {}
 
-    if "title" in data and not data["title"]:
-        return jsonify({"error": "Title cannot be empty"}), 400
+    if "title" in data:
+        title = str(data["title"]).strip()
+        if not title:
+            return jsonify({"error": "Title cannot be empty"}), 400
+        transaction.title = title
 
-    if "amount" in data and data["amount"] <= 0:
-        return jsonify({"error": "Amount must be greater than zero"}), 400
+    if "amount" in data:
+        try:
+            amt = float(data["amount"])
+            if amt <= 0:
+                return jsonify({"error": "Amount must be greater than zero"}), 400
+            transaction.amount = amt
+        except (ValueError, TypeError):
+            return jsonify({"error": "Amount must be a valid positive number"}), 400
 
-    if "type" in data and data["type"].lower() not in ["income", "expense"]:
-        return jsonify({"error": "Type must be income or expense"}), 400
+    if "type" in data:
+        t_type = str(data["type"]).strip().lower()
+        if t_type not in ["income", "expense"]:
+            return jsonify({"error": "Type must be income or expense"}), 400
+        transaction.type = t_type
 
-    transaction.title = data.get("title", transaction.title)
-    transaction.amount = data.get("amount", transaction.amount)
-    transaction.category = data.get("category", transaction.category)
-    transaction.type = data.get("type", transaction.type)
+    if "category" in data:
+        cat = str(data["category"]).strip()
+        if not cat:
+            return jsonify({"error": "Category cannot be empty"}), 400
+        transaction.category = cat
+
+    if "date" in data and data["date"]:
+        try:
+            transaction.date = datetime.strptime(str(data["date"]).strip(), "%Y-%m-%d")
+        except (ValueError, TypeError):
+            pass
 
     db.session.commit()
 
+    # Check if updated transaction pushes category budget over 80% or 100%
+    budget_alert = None
+    if transaction.type.lower() == "expense":
+        budget = Budget.query.filter(
+            Budget.user_id == current_user_id,
+            Budget.category.ilike(transaction.category)
+        ).first()
+
+        if budget and budget.monthly_limit > 0:
+            now = datetime.utcnow()
+            start_of_month = datetime(now.year, now.month, 1)
+            if now.month == 12:
+                start_of_next_month = datetime(now.year + 1, 1, 1)
+            else:
+                start_of_next_month = datetime(now.year, now.month + 1, 1)
+
+            cat_expenses = (
+                Transaction.query
+                .filter(
+                    Transaction.user_id == current_user_id,
+                    Transaction.type.ilike("expense"),
+                    Transaction.category.ilike(transaction.category),
+                    Transaction.date >= start_of_month,
+                    Transaction.date < start_of_next_month
+                )
+                .all()
+            )
+            total_spent = sum(float(t.amount) for t in cat_expenses)
+            pct = round((total_spent / budget.monthly_limit) * 100, 1)
+
+            if pct >= 100:
+                budget_alert = {
+                    "category": budget.category,
+                    "percentage": pct,
+                    "spent": round(total_spent, 2),
+                    "monthly_limit": budget.monthly_limit,
+                    "level": "exceeded",
+                    "message": f"Budget Exceeded: '{budget.category}' is at {pct}% (₹{total_spent:,.0f} / ₹{budget.monthly_limit:,.0f})"
+                }
+            elif pct >= 80:
+                budget_alert = {
+                    "category": budget.category,
+                    "percentage": pct,
+                    "spent": round(total_spent, 2),
+                    "monthly_limit": budget.monthly_limit,
+                    "level": "warning",
+                    "message": f"Budget Warning: '{budget.category}' is at {pct}% of monthly limit (₹{total_spent:,.0f} / ₹{budget.monthly_limit:,.0f})"
+                }
+
     return jsonify({
         "message": "Transaction updated successfully",
-        "transaction": transaction.to_dict()
+        "transaction": transaction.to_dict(),
+        "budget_alert": budget_alert
     })
 
 

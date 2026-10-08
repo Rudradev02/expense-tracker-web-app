@@ -1,21 +1,37 @@
 import { useState, useEffect, useCallback } from "react";
-import { addTransaction, getSummary } from "../services/api";
+import { addTransaction, updateTransaction, getSummary } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import CategorySelect from "./CategorySelect";
 
-export default function TransactionForm({ onSuccess }) {
+export default function TransactionForm({ transaction = null, onSuccess, onCancel }) {
   const { categories } = useCategories();
   const { triggerRefresh, refreshKeys } = useAppRefresh();
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [type, setType] = useState("expense");
+  const isEditing = Boolean(transaction);
+
+  const [title, setTitle] = useState(transaction?.title || "");
+  const [amount, setAmount] = useState(transaction?.amount ?? "");
+  const [category, setCategory] = useState(transaction?.category || "");
+  const [type, setType] = useState(transaction?.type || "expense");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [spent, setSpent] = useState(0);
 
   const BUDGET_LIMIT = 25000;
+
+  useEffect(() => {
+    if (transaction) {
+      setTitle(transaction.title || "");
+      setAmount(transaction.amount ?? "");
+      setCategory(transaction.category || "");
+      setType(transaction.type || "expense");
+    } else {
+      setTitle("");
+      setAmount("");
+      setCategory("");
+      setType("expense");
+    }
+  }, [transaction]);
 
   const fetchBudgetStatus = useCallback(async () => {
     try {
@@ -40,12 +56,19 @@ export default function TransactionForm({ onSuccess }) {
     setSubmitting(true);
 
     try {
-      const res = await addTransaction({
-        title,
+      const payload = {
+        title: title.trim(),
         amount: Number(amount),
         category,
         type,
-      });
+      };
+
+      let res;
+      if (isEditing) {
+        res = await updateTransaction(transaction.id, payload);
+      } else {
+        res = await addTransaction(payload);
+      }
 
       if (res.data?.budget_alert) {
         const alert = res.data.budget_alert;
@@ -54,22 +77,32 @@ export default function TransactionForm({ onSuccess }) {
           alert.message
         );
       } else {
-        showToast("success", "Transaction recorded successfully.");
+        showToast(
+          "success",
+          isEditing ? "Transaction updated successfully." : "Transaction recorded successfully."
+        );
       }
 
-      triggerRefresh('transactions');
-      triggerRefresh('dashboard');
-      triggerRefresh('budgets');
-      setTitle("");
-      setAmount("");
-      setCategory("");
-      setType("expense");
+      triggerRefresh("transactions");
+      triggerRefresh("dashboard");
+      triggerRefresh("budgets");
+
+      if (!isEditing) {
+        setTitle("");
+        setAmount("");
+        setCategory("");
+        setType("expense");
+      }
+
       if (onSuccess) {
-        setTimeout(onSuccess, 800);
+        setTimeout(onSuccess, 600);
       }
     } catch (error) {
       console.error(error);
-      showToast("error", "Failed to record transaction.");
+      showToast(
+        "error",
+        isEditing ? "Failed to update transaction." : "Failed to record transaction."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -88,13 +121,13 @@ export default function TransactionForm({ onSuccess }) {
     <div className="space-y-5 animate-fade-in">
       <div>
         <span className="section-label" style={{ color: "var(--text-muted)" }}>
-          Record
+          {isEditing ? "Modify" : "Record"}
         </span>
         <h3 className="text-base font-semibold tracking-tight m-0 mt-1" style={{ color: "var(--text)" }}>
-          New Transaction
+          {isEditing ? "Edit Transaction" : "New Transaction"}
         </h3>
         <p className="text-xs m-0 mt-0.5" style={{ color: "var(--text-muted)" }}>
-          Record income or expenditure
+          {isEditing ? "Update transaction details" : "Record income or expenditure"}
         </p>
       </div>
 
@@ -106,11 +139,11 @@ export default function TransactionForm({ onSuccess }) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="title" className="form-label">
+          <label htmlFor="tx-form-title" className="form-label">
             Title
           </label>
           <input
-            id="title"
+            id="tx-form-title"
             type="text"
             placeholder="e.g. Consulting retainer, groceries..."
             className="input-field"
@@ -122,11 +155,11 @@ export default function TransactionForm({ onSuccess }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="amount" className="form-label">
+            <label htmlFor="tx-form-amount" className="form-label">
               Amount (₹)
             </label>
             <input
-              id="amount"
+              id="tx-form-amount"
               type="number"
               placeholder="0"
               min="0.01"
@@ -139,11 +172,11 @@ export default function TransactionForm({ onSuccess }) {
           </div>
 
           <div>
-            <label htmlFor="type" className="form-label">
+            <label htmlFor="tx-form-type" className="form-label">
               Type
             </label>
             <select
-              id="type"
+              id="tx-form-type"
               className="input-field"
               value={type}
               onChange={(e) => setType(e.target.value)}
@@ -155,23 +188,39 @@ export default function TransactionForm({ onSuccess }) {
         </div>
 
         <div>
-          <label htmlFor="category" className="form-label">
+          <label htmlFor="tx-form-category" className="form-label">
             Category
           </label>
           <CategorySelect
-            id="category"
+            id="tx-form-category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting || !canSubmit}
-          className="btn-accent w-full py-2.5 mt-2"
-        >
-          {submitting ? "Processing..." : "Add Transaction"}
-        </button>
+        <div className="flex items-center gap-3 pt-2">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="btn-outline flex-1 py-2.5"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={submitting || !canSubmit}
+            className={`btn-accent ${onCancel ? "flex-1" : "w-full"} py-2.5`}
+          >
+            {submitting
+              ? "Processing..."
+              : isEditing
+              ? "Save Changes"
+              : "Add Transaction"}
+          </button>
+        </div>
       </form>
 
       {/* Budget Limit Tracker Widget */}

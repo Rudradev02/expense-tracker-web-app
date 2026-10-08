@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { deleteTransaction } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
-import EditTransactionModal from "./EditTransactionModal";
+import TransactionForm from "./TransactionForm";
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("en-IN", {
@@ -19,21 +19,23 @@ export default function TransactionTable({
   isFiltered = false,
   onClearFilters,
   loading = false,
+  onEdit,
+  onDelete,
 }) {
   const { triggerRefresh } = useAppRefresh();
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this transaction?"
-    );
-    if (!confirmDelete) return;
+  const handleDelete = async (t) => {
+    if (onDelete) {
+      onDelete(t);
+      return;
+    }
 
-    setDeletingId(id);
+    setDeletingId(t.id);
     try {
-      await deleteTransaction(id);
-      refreshTransactions();
+      await deleteTransaction(t.id);
+      if (refreshTransactions) refreshTransactions();
       triggerRefresh("transactions");
       triggerRefresh("dashboard");
     } catch (error) {
@@ -41,6 +43,14 @@ export default function TransactionTable({
       alert("Failed to delete transaction");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleEdit = (t) => {
+    if (onEdit) {
+      onEdit(t);
+    } else {
+      setEditingTransaction(t);
     }
   };
 
@@ -209,7 +219,7 @@ export default function TransactionTable({
                 {renderSortIndicator("amount")}
               </th>
 
-              <th style={{ textAlign: "right" }}>Actions</th>
+              <th style={{ textAlign: "right", minWidth: "90px" }}>Actions</th>
             </tr>
           </thead>
 
@@ -257,22 +267,22 @@ export default function TransactionTable({
                   </td>
 
                   <td style={{ textAlign: "right" }}>
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="table-row-actions">
                       <button
-                        onClick={() => setEditingTransaction(t)}
+                        onClick={() => handleEdit(t)}
                         className="btn-icon"
                         title="Edit transaction"
-                        aria-label="Edit transaction"
+                        aria-label={`Edit transaction ${t.title}`}
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDelete(t.id)}
+                        onClick={() => handleDelete(t)}
                         className="btn-icon btn-icon-danger"
                         title="Delete transaction"
-                        aria-label="Delete transaction"
+                        aria-label={`Delete transaction ${t.title}`}
                         disabled={deletingId === t.id}
                       >
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -289,11 +299,37 @@ export default function TransactionTable({
       </div>
 
       {editingTransaction && (
-        <EditTransactionModal
-          transaction={editingTransaction}
-          onClose={() => setEditingTransaction(null)}
-          onSaved={refreshTransactions}
-        />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in"
+          style={{ backgroundColor: "rgba(11, 11, 12, 0.75)" }}
+          onClick={() => setEditingTransaction(null)}
+        >
+          <div
+            className="w-full max-w-lg p-6 relative animate-slide-up"
+            style={{
+              backgroundColor: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "14px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setEditingTransaction(null)}
+              className="btn-icon absolute top-4 right-4"
+              aria-label="Close modal"
+            >
+              ✕
+            </button>
+            <TransactionForm
+              transaction={editingTransaction}
+              onSuccess={() => {
+                setEditingTransaction(null);
+                if (refreshTransactions) refreshTransactions();
+              }}
+              onCancel={() => setEditingTransaction(null)}
+            />
+          </div>
+        </div>
       )}
     </>
   );
