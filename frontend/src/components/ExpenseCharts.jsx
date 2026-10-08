@@ -61,26 +61,38 @@ function CustomChartTooltip({ active, payload, label }) {
         </p>
       )}
       <div className="space-y-1.5">
-        {payload.map((entry, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-between gap-4 font-medium"
-          >
-            <span className="flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
-              <span
-                className="w-2 h-2 rounded-full inline-block"
-                style={{ backgroundColor: entry.color || entry.fill }}
-              />
-              <span>{entry.name}:</span>
-            </span>
-            <span
-              className="tabular-nums"
-              style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}
+        {payload.map((entry, index) => {
+          if (entry.value === null || entry.value === undefined) return null;
+          const isProjected = entry.dataKey === "projected" || entry.name?.includes("Projected");
+          return (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-4 font-medium"
             >
-              {formatINR(entry.value)}
-            </span>
-          </div>
-        ))}
+              <span className="flex items-center gap-1.5" style={{ color: "var(--text-muted)" }}>
+                <span
+                  className="w-2 h-2 rounded-full inline-block"
+                  style={{
+                    backgroundColor: entry.color || entry.fill,
+                    border: isProjected ? "1px dashed var(--expense)" : "none",
+                  }}
+                />
+                <span>{entry.name}:</span>
+              </span>
+              <span
+                className="tabular-nums"
+                style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}
+              >
+                {formatINR(entry.value)}
+                {isProjected && (
+                  <span className="text-[10px] ml-1 font-normal" style={{ color: "var(--accent)" }}>
+                    (Forecast)
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -89,6 +101,7 @@ function CustomChartTooltip({ active, payload, label }) {
 export default function ExpenseCharts({
   expenseByCategory,
   monthlyTrends,
+  forecast = null,
   loading = false,
   onAddTransaction,
 }) {
@@ -119,7 +132,31 @@ export default function ExpenseCharts({
     expense: Number(item.expense) || 0,
   }));
 
-  const hasTrendData = validTrends.some((t) => t.income > 0 || t.expense > 0);
+  // Build chart trends data including next-month projection if forecast is available
+  const hasForecast =
+    Boolean(forecast?.has_enough_data) && Number(forecast?.projected_total) > 0;
+
+  let chartTrends = validTrends.map((t, idx) => ({
+    ...t,
+    // Connect the last historical point to the projected line
+    projected:
+      hasForecast && idx === validTrends.length - 1 && t.expense > 0
+        ? t.expense
+        : null,
+  }));
+
+  if (hasForecast && validTrends.length > 0) {
+    chartTrends.push({
+      name: forecast.target_month_short || "Forecast",
+      income: null,
+      expense: null,
+      projected: forecast.projected_total,
+      isForecast: true,
+    });
+  }
+
+  const hasTrendData =
+    validTrends.some((t) => t.income > 0 || t.expense > 0) || hasForecast;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -287,7 +324,7 @@ export default function ExpenseCharts({
         <div className="h-72">
           {hasTrendData ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={validTrends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <LineChart data={chartTrends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke={COLORS.border}
@@ -348,6 +385,29 @@ export default function ExpenseCharts({
                     strokeWidth: 2,
                   }}
                 />
+                {hasForecast && (
+                  <Line
+                    type="monotone"
+                    dataKey="projected"
+                    name="Projected Expense"
+                    stroke={COLORS.expense}
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    connectNulls={true}
+                    dot={{
+                      r: 4,
+                      stroke: COLORS.expense,
+                      strokeWidth: 1.5,
+                      fill: "var(--surface)",
+                    }}
+                    activeDot={{
+                      r: 5,
+                      fill: COLORS.expense,
+                      stroke: COLORS.surface2,
+                      strokeWidth: 2,
+                    }}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           ) : (

@@ -7,6 +7,7 @@ import {
   getCategories,
   getBudgets,
   loadSampleData,
+  getForecast,
 } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import SummaryCard from "../components/SummaryCard";
@@ -14,6 +15,7 @@ import ExpenseCharts from "../components/ExpenseCharts";
 import TransactionForm from "../components/TransactionForm";
 import BudgetWidget from "../components/BudgetWidget";
 import InsightsCard from "../components/InsightsCard";
+import ForecastCard from "../components/ForecastCard";
 import OnboardingChecklist from "../components/OnboardingChecklist";
 import EmptyState from "../components/EmptyState";
 
@@ -145,6 +147,11 @@ export default function Dashboard() {
   const [budgetsCount, setBudgetsCount] = useState(0);
   const [totalTxCount, setTotalTxCount] = useState(0);
   const [loadingSample, setLoadingSample] = useState(false);
+
+  // Next-month spending forecast state
+  const [forecast, setForecast] = useState(null);
+  const [forecastLoading, setForecastLoading] = useState(true);
+  const [forecastError, setForecastError] = useState(null);
 
   // Date range switcher state & localStorage persistence
   const [selectedPreset, setSelectedPreset] = useState(() => {
@@ -339,15 +346,35 @@ export default function Dashboard() {
     }
   }, [triggerRefresh, fetchDashboardData]);
 
+  const fetchForecastData = useCallback(async () => {
+    try {
+      setForecastLoading(true);
+      setForecastError(null);
+      const res = await getForecast();
+      setForecast(res.data);
+    } catch (err) {
+      console.error("Error fetching forecast:", err);
+      setForecastError("Failed to calculate next-month spending forecast.");
+    } finally {
+      setForecastLoading(false);
+    }
+  }, []);
+
   const isInitialMount = useRef(true);
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       fetchDashboardData(false);
+      fetchForecastData();
     } else {
       fetchDashboardData(true);
     }
   }, [activeDates, refreshKeys.dashboard, fetchDashboardData]);
+
+  // Refetch forecast whenever dashboard or transactions or recurring rules refresh
+  useEffect(() => {
+    fetchForecastData();
+  }, [refreshKeys.dashboard, refreshKeys.transactions, refreshKeys.recurring, fetchForecastData]);
 
   const handlePresetClick = (presetId) => {
     if (presetId === "custom") {
@@ -764,10 +791,19 @@ export default function Dashboard() {
       {/* Financial Insights Card */}
       <InsightsCard />
 
+      {/* Next-Month Spending Forecast Card */}
+      <ForecastCard
+        forecast={forecast}
+        loading={forecastLoading}
+        error={forecastError}
+        onRetry={fetchForecastData}
+      />
+
       {/* Analytics Charts Section */}
       <ExpenseCharts
         expenseByCategory={summary?.expense_by_category}
         monthlyTrends={summary?.monthly_trends}
+        forecast={forecast}
         loading={isRefetching}
         onAddTransaction={() => {
           setModalTransaction(null);

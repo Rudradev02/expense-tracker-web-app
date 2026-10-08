@@ -181,6 +181,8 @@ export const processRecurringRules = () =>
 
 export const getInsights = () => API.get("/insights");
 
+export const getForecast = () => API.get("/forecast");
+
 export const loadSampleData = () => API.post("/transactions/sample-data");
 
 export default API;
