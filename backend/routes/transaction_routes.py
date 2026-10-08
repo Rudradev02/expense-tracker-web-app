@@ -1,37 +1,35 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 from datetime import datetime
 from config import db
 from models import Transaction, Budget
 from utils.auth import token_required
+from utils.csv_generator import generate_csv
+from utils.pdf_generator import generate_pdf
+from sqlalchemy import or_
 
 transaction_bp = Blueprint("transaction_bp", __name__)
 
 
-from sqlalchemy import or_
-
-# GET all transactions
-@transaction_bp.route("/transactions", methods=["GET"])
-@token_required
-def get_transactions(current_user_id):
+def build_transaction_query(current_user_id, args):
     query = Transaction.query.filter_by(user_id=current_user_id)
 
     # 1. Search (matches title/description/notes)
     search = (
-        request.args.get("search") or
-        request.args.get("title") or
-        request.args.get("q") or
+        args.get("search") or
+        args.get("title") or
+        args.get("q") or
         ""
     ).strip()
     if search:
         query = query.filter(Transaction.title.ilike(f"%{search}%"))
 
     # 2. Type filter (income, expense, all)
-    tx_type = (request.args.get("type") or "").strip().lower()
+    tx_type = (args.get("type") or "").strip().lower()
     if tx_type in ["income", "expense"]:
         query = query.filter(Transaction.type.ilike(tx_type))
 
     # 3. Category filter (multi-select: comma-separated or multiple args)
-    raw_list = request.args.getlist("category")
+    raw_list = args.getlist("category") if hasattr(args, "getlist") else []
     categories = []
     for item in raw_list:
         if item and item.strip():
@@ -39,15 +37,15 @@ def get_transactions(current_user_id):
                 if c.strip():
                     categories.append(c.strip())
 
-    if not categories and request.args.get("category"):
-        raw_cats = request.args.get("category")
+    if not categories and args.get("category"):
+        raw_cats = args.get("category")
         categories = [c.strip() for c in raw_cats.split(",") if c.strip()]
 
     if categories:
         query = query.filter(or_(*[Transaction.category.ilike(c) for c in categories]))
 
     # 4. Date range filter (start_date, end_date)
-    start_date = request.args.get("start_date")
+    start_date = args.get("start_date")
     if start_date:
         try:
             start_dt = datetime.strptime(start_date.strip(), "%Y-%m-%d")
@@ -55,7 +53,7 @@ def get_transactions(current_user_id):
         except (ValueError, TypeError):
             pass
 
-    end_date = request.args.get("end_date")
+    end_date = args.get("end_date")
     if end_date:
         try:
             end_dt = datetime.strptime(end_date.strip(), "%Y-%m-%d").replace(
@@ -66,14 +64,14 @@ def get_transactions(current_user_id):
             pass
 
     # 5. Min / Max amount filters
-    min_amount = request.args.get("min_amount")
+    min_amount = args.get("min_amount")
     if min_amount:
         try:
             query = query.filter(Transaction.amount >= float(min_amount))
         except (ValueError, TypeError):
             pass
 
-    max_amount = request.args.get("max_amount")
+    max_amount = args.get("max_amount")
     if max_amount:
         try:
             query = query.filter(Transaction.amount <= float(max_amount))
@@ -81,8 +79,8 @@ def get_transactions(current_user_id):
             pass
 
     # 6. Sorting (date, amount, category, title)
-    sort_by = (request.args.get("sort_by") or "date").strip().lower()
-    sort_order = (request.args.get("sort_order") or "desc").strip().lower()
+    sort_by = (args.get("sort_by") or "date").strip().lower()
+    sort_order = (args.get("sort_order") or "desc").strip().lower()
 
     col_map = {
         "date": Transaction.date,
@@ -96,6 +94,15 @@ def get_transactions(current_user_id):
         query = query.order_by(target_col.asc())
     else:
         query = query.order_by(target_col.desc())
+
+    return query
+
+
+# GET all transactions
+@transaction_bp.route("/transactions", methods=["GET"])
+@token_required
+def get_transactions(current_user_id):
+    query = build_transaction_query(current_user_id, request.args)
 
     # Optional pagination
     page = request.args.get("page", type=int)
@@ -114,6 +121,52 @@ def get_transactions(current_user_id):
 
     transactions = query.all()
     return jsonify([t.to_dict() for t in transactions])
+
+
+# EXPORT transactions (CSV or PDF)
+@transaction_bp.route("/transactions/export", methods=["GET"])
+@token_required
+def export_transactions(current_user_id):
+    fmt = (request.args.get("format") or "csv").strip().lower()
+    if fmt not in ["csv", "pdf"]:
+        return jsonify({"error": "Invalid export format. Supported formats: csv, pdf"}), 400
+
+    # Build query respecting all active filters, dates, and sort
+    query = build_transaction_query(current_user_id, request.args)
+    transactions = query.all()
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    if fmt == "csv":
+        csv_bytes = generate_csv(transactions)
+        filename = f"transactions_{timestamp}.csv"
+        return Response(
+            csv_bytes,
+            mimetype="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Type": "text/csv; charset=utf-8",
+            }
+        )
+
+    elif fmt == "pdf":
+        filter_meta = {
+            "start_date": request.args.get("start_date"),
+            "end_date": request.args.get("end_date"),
+            "type": request.args.get("type"),
+            "category": request.args.get("category"),
+        }
+        pdf_bytes = generate_pdf(transactions, filters=filter_meta)
+        filename = f"transactions_{timestamp}.pdf"
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Type": "application/pdf",
+            }
+        )
+
 
 
 # GET transaction by ID

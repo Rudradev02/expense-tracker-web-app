@@ -68,7 +68,14 @@ export const getTransactions = (paramsOrTitle = "", category = "") => {
   return API.get("/transactions", { params });
 };
 
+export const exportTransactions = (params) =>
+  API.get("/transactions/export", {
+    params,
+    responseType: "blob",
+  });
+
 export const addTransaction = (transaction) =>
+
   API.post("/transactions", transaction);
 
 export const updateTransaction = (id, transaction) =>

@@ -712,4 +712,98 @@ body {
   color: var(--text);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Export Dropdown & Toast (Quiet, 1px border, No glows)
+   ───────────────────────────────────────────────────────────── */
+
+.export-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.export-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  min-width: 140px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.export-dropdown-item:hover:not(:disabled) {
+  background-color: var(--surface-2);
+  color: var(--accent);
+}
+
+.export-dropdown-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.feedback-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: slideInUp 200ms ease;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.feedback-toast.success {
+  border-color: var(--income);
+}
+
+.feedback-toast.error {
+  border-color: var(--expense);
+}
+
+.feedback-toast-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.feedback-toast-close:hover {
+  color: var(--text);
+}
+
+
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getTransactions, deleteTransaction } from "../services/api";
+import { getTransactions, deleteTransaction, exportTransactions } from "../services/api";
 import { useCategories } from "../context/CategoriesContext";
 import { useAppRefresh } from "../context/AppRefreshContext";
 import TransactionTable from "../components/TransactionTable";
@@ -37,6 +37,11 @@ export default function Transactions() {
   const [modalTransaction, setModalTransaction] = useState(null);
   const [showFilterDetails, setShowFilterDetails] = useState(false);
 
+  // Export states
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportFeedback, setExportFeedback] = useState(null);
+
   // Soft delete state & ref
   const [deleteToast, setDeleteToast] = useState(null);
   const pendingDeleteRef = useRef(null);
@@ -47,6 +52,8 @@ export default function Transactions() {
   const [error, setError] = useState(null);
 
   const categoryDropdownRef = useRef(null);
+  const exportDropdownRef = useRef(null);
+
 
   // Soft delete handler (6 seconds undo toast)
   const handleInitiateDelete = useCallback(
@@ -172,7 +179,7 @@ export default function Transactions() {
     return () => clearTimeout(timer);
   }, [searchInput, urlSearch, updateFilterParams]);
 
-  // Close category dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event) {
       if (
@@ -181,10 +188,27 @@ export default function Transactions() {
       ) {
         setCategoryDropdownOpen(false);
       }
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target)
+      ) {
+        setExportDropdownOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Auto-dismiss export feedback toast after 4 seconds
+  useEffect(() => {
+    if (exportFeedback) {
+      const timer = setTimeout(() => {
+        setExportFeedback(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [exportFeedback]);
+
 
   // Fetch transactions using query params
   const fetchTransactions = useCallback(async () => {
@@ -304,6 +328,68 @@ export default function Transactions() {
     urlMaxAmount
   );
 
+  // Handle export (CSV / PDF)
+  const handleExport = async (format) => {
+    if (isExporting) return;
+    if (isDateRangeInvalid || isAmountRangeInvalid) {
+      setExportFeedback({
+        type: "error",
+        message: "Please correct invalid filter ranges before exporting.",
+      });
+      setExportDropdownOpen(false);
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      setExportDropdownOpen(false);
+
+      const exportParams = { format };
+      if (urlSearch) exportParams.search = urlSearch;
+      if (urlType && urlType !== "all") exportParams.type = urlType;
+      if (urlCategories.length > 0) exportParams.category = urlCategories.join(",");
+      if (urlStartDate) exportParams.start_date = urlStartDate;
+      if (urlEndDate) exportParams.end_date = urlEndDate;
+      if (urlMinAmount) exportParams.min_amount = urlMinAmount;
+      if (urlMaxAmount) exportParams.max_amount = urlMaxAmount;
+      exportParams.sort_by = urlSortBy;
+      exportParams.sort_order = urlSortOrder;
+
+      const res = await exportTransactions(exportParams);
+      const mimeType = format === "csv" ? "text/csv;charset=utf-8" : "application/pdf";
+      const blob = new Blob([res.data], { type: mimeType });
+
+      let filename = `transactions_${new Date().toISOString().slice(0, 10)}.${format}`;
+      const disposition = res.headers ? res.headers["content-disposition"] : null;
+      if (disposition && disposition.includes("filename=")) {
+        const match = disposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      setExportFeedback({
+        type: "success",
+        message: `Transactions exported to ${format.toUpperCase()} successfully.`,
+      });
+    } catch (err) {
+      console.error("Export failed:", err);
+      setExportFeedback({
+        type: "error",
+        message: `Failed to export ${format.toUpperCase()}. Please check your connection.`,
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -320,18 +406,84 @@ export default function Transactions() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setModalTransaction(null);
-            setShowModal(true);
-          }}
-          className="btn-accent self-start sm:self-auto"
-          id="btn-add-transaction"
-        >
-          <span className="text-base leading-none">+</span>
-          <span>Add Transaction</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          {/* Export Dropdown */}
+          <div className="export-dropdown" ref={exportDropdownRef}>
+            <button
+              type="button"
+              id="btn-export-transactions"
+              onClick={() => setExportDropdownOpen((prev) => !prev)}
+              disabled={isExporting}
+              className="btn-secondary flex items-center gap-2 py-2 px-3 text-xs"
+              aria-haspopup="true"
+              aria-expanded={exportDropdownOpen}
+              title="Export transactions"
+            >
+              {isExporting ? (
+                <span className="inline-block w-3.5 h-3.5 border-2 border-[var(--text-muted)] border-t-[var(--accent)] rounded-full animate-spin" />
+              ) : (
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.75}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+              )}
+              <span>{isExporting ? "Exporting..." : "Export"}</span>
+              <span className="text-[10px] opacity-70 ml-0.5">▼</span>
+            </button>
+
+            {exportDropdownOpen && (
+              <div className="export-dropdown-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  id="btn-export-csv"
+                  onClick={() => handleExport("csv")}
+                  className="export-dropdown-item"
+                >
+                  <svg className="h-3.5 w-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Export as CSV</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  id="btn-export-pdf"
+                  onClick={() => handleExport("pdf")}
+                  className="export-dropdown-item"
+                >
+                  <svg className="h-3.5 w-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span>Export as PDF</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => {
+              setModalTransaction(null);
+              setShowModal(true);
+            }}
+            className="btn-accent"
+            id="btn-add-transaction"
+          >
+            <span className="text-base leading-none">+</span>
+            <span>Add Transaction</span>
+          </button>
+        </div>
       </div>
+
 
       <section
         className="card overflow-hidden"
@@ -831,6 +983,32 @@ export default function Transactions() {
             onClick={handleDismissDeleteToast}
             className="undo-toast-close"
             aria-label="Dismiss delete toast"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Export Feedback Toast */}
+      {exportFeedback && (
+        <div
+          className={`feedback-toast ${exportFeedback.type}`}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2">
+            {exportFeedback.type === "success" ? (
+              <span style={{ color: "var(--income)", fontWeight: "bold" }}>✓</span>
+            ) : (
+              <span style={{ color: "var(--expense)", fontWeight: "bold" }}>✕</span>
+            )}
+            <span>{exportFeedback.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExportFeedback(null)}
+            className="feedback-toast-close"
+            aria-label="Dismiss export toast"
           >
             ✕
           </button>
