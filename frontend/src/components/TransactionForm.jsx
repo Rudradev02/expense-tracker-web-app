@@ -74,6 +74,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
   const [suggestedCategory, setSuggestedCategory] = useState(null);
   const [suggestionConfidence, setSuggestionConfidence] = useState(0);
   const [suggestionSource, setSuggestionSource] = useState(null);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const [isUserOverridden, setIsUserOverridden] = useState(false);
   const titleTouchedRef = useRef(false);
 
@@ -649,7 +650,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
           <div>
             <div className="flex items-center justify-between mb-1">
               <label htmlFor="tx-form-amount" className="form-label mb-0">
-                Amount ({currencies.find((c) => c.code === currencyCode)?.symbol || "₹"})
+                Amount ({((currencies || []).find((c) => c.code === currencyCode))?.symbol || "₹"})
               </label>
               {lowConfidenceFields.includes("amount") && (
                 <span
@@ -680,7 +681,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
                   setCustomRate("");
                 }}
               >
-                {currencies.map((c) => (
+                {(currencies || []).map((c) => (
                   <option key={c.code} value={c.code}>
                     {c.symbol} {c.code}
                   </option>

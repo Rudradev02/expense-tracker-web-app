@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify, Response
 from datetime import datetime, timedelta
 from config import db
-from models import Transaction, Budget
+from models import Transaction, Budget, User
 from utils.auth import token_required
+from utils.currency_service import convert_amount
 from utils.csv_generator import generate_csv
 from utils.pdf_generator import generate_pdf
 from sqlalchemy import or_
@@ -772,20 +773,29 @@ def get_insights(current_user_id):
                 "direction": "down"
             })
 
-    # 3. Biggest expense category this month
+    # 3. User base currency configuration
+    user = User.query.get(current_user_id) if current_user_id else None
+    user_curr = getattr(user, 'base_currency', 'INR') if user else 'INR'
+    currency_symbols = {"INR": "₹", "USD": "$", "EUR": "€", "GBP": "£"}
+    curr_sym = currency_symbols.get(user_curr, "₹")
+
+    # 4. Biggest expense category this month
     if curr_cat_expenses:
         top_cat, top_amt = max(curr_cat_expenses.items(), key=lambda x: x[1])
         if top_amt > 0:
+            converted_top_amt, _ = convert_amount(top_amt, "INR", user_curr)
             insights.append({
                 "id": "biggest_expense",
                 "prefix": f"Your biggest expense category is {top_cat} (",
-                "highlight": f"₹{top_amt:,.0f}",
+                "highlight": f"{curr_sym}{converted_top_amt:,.0f}",
                 "suffix": ").",
                 "type": "expense",
-                "direction": None
+                "direction": None,
+                "amount": round(top_amt, 2),
+                "is_monetary": True
             })
 
-    # 4. Budget adherence
+    # 5. Budget adherence
     budgets = Budget.query.filter_by(user_id=current_user_id).all()
     if budgets:
         total_budgets = len(budgets)
@@ -805,13 +815,16 @@ def get_insights(current_user_id):
     elif len(insights) < 3 and curr_expense > 0:
         days_passed = max(1, now.day)
         daily_avg = curr_expense / days_passed
+        converted_daily_avg, _ = convert_amount(daily_avg, "INR", user_curr)
         insights.append({
             "id": "daily_avg",
             "prefix": "Average daily expenditure this month: ",
-            "highlight": f"₹{daily_avg:,.0f}",
+            "highlight": f"{curr_sym}{converted_daily_avg:,.0f}",
             "suffix": f" (across {days_passed} day{'s' if days_passed > 1 else ''}).",
             "type": "neutral",
-            "direction": None
+            "direction": None,
+            "amount": round(daily_avg, 2),
+            "is_monetary": True
         })
 
     return jsonify({

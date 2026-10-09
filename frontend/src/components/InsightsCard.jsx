@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { getInsights } from "../services/api";
 import { useAppRefresh } from "../context/AppRefreshContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function InsightsCard() {
   const { refreshKeys } = useAppRefresh();
+  const { displayMoney, baseCurrency } = useCurrency();
   const [insights, setInsights] = useState([]);
   const [monthName, setMonthName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -28,12 +30,42 @@ export default function InsightsCard() {
 
   useEffect(() => {
     fetchInsights();
-  }, [fetchInsights, refreshKeys.dashboard, refreshKeys.transactions]);
+  }, [fetchInsights, refreshKeys.dashboard, refreshKeys.transactions, baseCurrency]);
 
   const getHighlightColor = (type) => {
     if (type === "income") return "var(--income)";
     if (type === "expense") return "var(--expense)";
     return "var(--accent)";
+  };
+
+  const renderHighlight = (item) => {
+    if (
+      item.amount !== undefined &&
+      item.amount !== null &&
+      (item.is_monetary || item.id === "biggest_expense" || item.id === "daily_avg")
+    ) {
+      return displayMoney(item.amount);
+    }
+
+    // Dynamic fallback for any highlight string with currency symbols
+    if (
+      typeof item.highlight === "string" &&
+      (item.highlight.includes("₹") ||
+        item.highlight.includes("Rs") ||
+        item.highlight.startsWith("$") ||
+        item.highlight.startsWith("€") ||
+        item.highlight.startsWith("£"))
+    ) {
+      const match = item.highlight.match(/[\d,.]+/);
+      if (match) {
+        const num = parseFloat(match[0].replace(/,/g, ""));
+        if (!isNaN(num)) {
+          return displayMoney(num);
+        }
+      }
+    }
+
+    return item.highlight;
   };
 
   return (
@@ -198,7 +230,7 @@ export default function InsightsCard() {
                     className="font-semibold tabular-nums inline-flex items-center gap-0.5 mx-0.5"
                     style={{ color: highlightColor }}
                   >
-                    {item.highlight}
+                    {renderHighlight(item)}
                     {item.direction === "up" && (
                       <svg className="w-2.5 h-2.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
