@@ -206,33 +206,28 @@ def add_transaction(current_user_id):
         except (ValueError, TypeError):
             pass
 
-    # Multi-currency conversion & storage
-    from models import User
+    # Multi-currency conversion & storage (Database invariant: amount is always stored in INR)
     from utils.currency_service import get_supported_currency_codes, convert_amount, get_cached_exchange_rates
 
-    user = User.query.get(current_user_id)
-    base_currency = (user.base_currency if user and user.base_currency else "INR").upper()
-
-    tx_currency = str(data.get("currency") or base_currency).upper().strip()
+    tx_currency = str(data.get("currency") or "INR").upper().strip()
     if tx_currency not in get_supported_currency_codes():
-        tx_currency = base_currency
+        tx_currency = "INR"
 
     input_amount = float(data["amount"])
     custom_rate = data.get("exchange_rate")
     rates_to_inr, _, _, _ = get_cached_exchange_rates()
 
-    if tx_currency == base_currency:
-        original_amount = input_amount
+    original_amount = input_amount
+    if tx_currency == "INR":
         exchange_rate = 1.0
         base_amount = input_amount
     else:
-        original_amount = input_amount
         if custom_rate and float(custom_rate) > 0:
             exchange_rate = float(custom_rate)
             base_amount = round(original_amount * exchange_rate, 2)
         else:
             base_amount, exchange_rate = convert_amount(
-                original_amount, tx_currency, base_currency, rates_to_inr
+                original_amount, tx_currency, "INR", rates_to_inr
             )
 
     transaction = Transaction(
@@ -367,15 +362,11 @@ def update_transaction(current_user_id, id):
 
     # Multi-currency update handling
     if "currency" in data or "amount" in data or "exchange_rate" in data:
-        from models import User
         from utils.currency_service import get_supported_currency_codes, convert_amount, get_cached_exchange_rates
 
-        user = User.query.get(current_user_id)
-        base_currency = (user.base_currency if user and user.base_currency else "INR").upper()
-
-        curr = str(data.get("currency") or transaction.currency or base_currency).upper().strip()
+        curr = str(data.get("currency") or transaction.currency or "INR").upper().strip()
         if curr not in get_supported_currency_codes():
-            curr = base_currency
+            curr = "INR"
 
         if "amount" in data:
             try:
@@ -390,8 +381,8 @@ def update_transaction(current_user_id, id):
         custom_rate = data.get("exchange_rate")
         rates_to_inr, _, _, _ = get_cached_exchange_rates()
 
-        if curr == base_currency:
-            transaction.currency = curr
+        if curr == "INR":
+            transaction.currency = "INR"
             transaction.original_amount = orig_amt
             transaction.exchange_rate = 1.0
             transaction.amount = orig_amt
@@ -400,7 +391,7 @@ def update_transaction(current_user_id, id):
                 rate = float(custom_rate)
                 converted_base = round(orig_amt * rate, 2)
             else:
-                converted_base, rate = convert_amount(orig_amt, curr, base_currency, rates_to_inr)
+                converted_base, rate = convert_amount(orig_amt, curr, "INR", rates_to_inr)
             transaction.currency = curr
             transaction.original_amount = orig_amt
             transaction.exchange_rate = rate

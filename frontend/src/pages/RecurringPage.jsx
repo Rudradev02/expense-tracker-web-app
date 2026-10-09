@@ -16,7 +16,7 @@ import CategorySelect from "../components/CategorySelect";
 export default function RecurringPage() {
   const { categories } = useCategories();
   const { triggerRefresh, refreshKeys } = useAppRefresh();
-  const { formatCurrency, activeCurrencyInfo } = useCurrency();
+  const { formatCurrency, displayMoney, activeCurrencyInfo, baseCurrency, ratesToInr } = useCurrency();
 
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +85,14 @@ export default function RecurringPage() {
   const handleOpenEditModal = (rule) => {
     setEditingRule(rule);
     setFormDescription(rule.description || "");
-    setFormAmount(rule.amount ?? "");
+    const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
+    const convertedAmt =
+      rule.amount !== null && rule.amount !== undefined
+        ? baseCurrency === "INR"
+          ? rule.amount
+          : Math.round((Number(rule.amount) / rateToInr) * 100) / 100
+        : "";
+    setFormAmount(String(convertedAmt));
     setFormType(rule.type || "expense");
     setFormCategory(rule.category || "");
     setFormFrequency(rule.frequency || "monthly");
@@ -191,9 +198,12 @@ export default function RecurringPage() {
 
     try {
       setFormSubmitting(true);
+      const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
+      const inrAmount =
+        baseCurrency === "INR" ? amt : Math.round(amt * rateToInr * 100) / 100;
       const payload = {
         description: desc,
-        amount: amt,
+        amount: inrAmount,
         type: formType,
         category: formCategory,
         frequency: formFrequency,
@@ -358,7 +368,7 @@ export default function RecurringPage() {
             Projected Monthly Outflow
           </span>
           <div className="text-2xl font-bold tracking-tight mt-1" style={{ color: "var(--expense)" }}>
-            -{formatCurrency(stats.monthlyExpense)}
+            -{displayMoney(stats.monthlyExpense)}
           </div>
         </div>
 
@@ -374,7 +384,7 @@ export default function RecurringPage() {
             Projected Monthly Inflow
           </span>
           <div className="text-2xl font-bold tracking-tight mt-1" style={{ color: "var(--income)" }}>
-            +{formatCurrency(stats.monthlyIncome)}
+            +{displayMoney(stats.monthlyIncome)}
           </div>
         </div>
       </div>
@@ -653,7 +663,7 @@ export default function RecurringPage() {
                           fontVariantNumeric: "tabular-nums",
                         }}
                       >
-                        {isIncome ? "+" : "-"}{formatCurrency(rule.amount)}
+                        {isIncome ? "+" : "-"}{displayMoney(rule.amount)}
                       </td>
 
                       <td style={{ textAlign: "right" }}>

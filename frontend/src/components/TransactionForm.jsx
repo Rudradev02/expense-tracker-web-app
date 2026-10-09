@@ -46,7 +46,7 @@ function saveLocalCategoryOverride(description, categoryName) {
 export default function TransactionForm({ transaction = null, onSuccess, onCancel }) {
   const { categories } = useCategories();
   const { triggerRefresh, refreshKeys } = useAppRefresh();
-  const { baseCurrency, currencies, getExchangeRate, formatCurrency } = useCurrency();
+  const { baseCurrency, currencies, getExchangeRate, formatCurrency, displayMoney } = useCurrency();
   const isEditing = Boolean(transaction);
 
   const [title, setTitle] = useState(transaction?.title || "");
@@ -987,8 +987,8 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
           />
         </div>
         <div className="flex items-center justify-between text-[11px] tabular-nums" style={{ color: "var(--text-muted)" }}>
-          <span>{formatCurrency(spent)} spent</span>
-          <span>Limit: {formatCurrency(BUDGET_LIMIT)}</span>
+          <span>{displayMoney(spent)} spent</span>
+          <span>Limit: {displayMoney(BUDGET_LIMIT)}</span>
         </div>
       </div>
     </div>

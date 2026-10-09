@@ -8,8 +8,8 @@ import EmptyState from "./EmptyState";
 
 export default function BudgetWidget({ showViewAllLink = true, limitDisplay = null }) {
   const { refreshKeys } = useAppRefresh();
-  const { formatCurrency } = useCurrency();
-  const formatINR = formatCurrency;
+  const { displayMoney } = useCurrency();
+  const formatINR = displayMoney;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

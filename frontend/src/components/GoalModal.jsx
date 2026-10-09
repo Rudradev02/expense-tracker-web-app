@@ -10,7 +10,7 @@ export default function GoalModal({
   onSuccess = null,
 }) {
   const { triggerRefresh } = useAppRefresh();
-  const { activeCurrencyInfo } = useCurrency();
+  const { activeCurrencyInfo, baseCurrency, ratesToInr } = useCurrency();
 
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
@@ -22,18 +22,29 @@ export default function GoalModal({
   const isEditing = Boolean(initialGoal && initialGoal.id);
 
   useEffect(() => {
+    const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
     if (initialGoal) {
       setName(initialGoal.name || "");
-      setTargetAmount(
-        initialGoal.target_amount !== undefined && initialGoal.target_amount !== null
-          ? String(initialGoal.target_amount)
-          : ""
-      );
-      setSavedAmount(
-        initialGoal.saved_amount !== undefined && initialGoal.saved_amount !== null
-          ? String(initialGoal.saved_amount)
-          : "0"
-      );
+      if (initialGoal.target_amount !== undefined && initialGoal.target_amount !== null) {
+        const convertedTarget =
+          baseCurrency === "INR"
+            ? initialGoal.target_amount
+            : Math.round((Number(initialGoal.target_amount) / rateToInr) * 100) / 100;
+        setTargetAmount(String(convertedTarget));
+      } else {
+        setTargetAmount("");
+      }
+
+      if (initialGoal.saved_amount !== undefined && initialGoal.saved_amount !== null) {
+        const convertedSaved =
+          baseCurrency === "INR"
+            ? initialGoal.saved_amount
+            : Math.round((Number(initialGoal.saved_amount) / rateToInr) * 100) / 100;
+        setSavedAmount(String(convertedSaved));
+      } else {
+        setSavedAmount("0");
+      }
+
       setTargetDate(
         initialGoal.target_date ? initialGoal.target_date.slice(0, 10) : ""
       );
@@ -47,7 +58,7 @@ export default function GoalModal({
       setTargetDate(d.toISOString().slice(0, 10));
     }
     setError("");
-  }, [initialGoal, isOpen]);
+  }, [initialGoal, isOpen, baseCurrency, ratesToInr]);
 
   if (!isOpen) return null;
 
@@ -80,10 +91,16 @@ export default function GoalModal({
 
     setSubmitting(true);
     try {
+      const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
+      const inrTarget =
+        baseCurrency === "INR" ? targetNum : Math.round(targetNum * rateToInr * 100) / 100;
+      const inrSaved =
+        baseCurrency === "INR" ? savedNum : Math.round(savedNum * rateToInr * 100) / 100;
+
       const payload = {
         name: trimmedName,
-        target_amount: targetNum,
-        saved_amount: savedNum,
+        target_amount: inrTarget,
+        saved_amount: inrSaved,
         target_date: targetDate,
       };
 

@@ -20,7 +20,7 @@ export default function TransactionTable({
   onLoadSampleData,
 }) {
   const { triggerRefresh } = useAppRefresh();
-  const { formatCurrency, baseCurrency } = useCurrency();
+  const { formatCurrency, displayMoney, baseCurrency } = useCurrency();
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -245,7 +245,7 @@ export default function TransactionTable({
                   >
                     <div>
                       <span>
-                        {isIncome ? "+" : "-"}{formatCurrency(t.amount, baseCurrency)}
+                        {isIncome ? "+" : "-"}{displayMoney(t.amount)}
                       </span>
                       {t.currency && t.currency !== baseCurrency && (
                         <div

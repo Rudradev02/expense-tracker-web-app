@@ -14,6 +14,23 @@ from utils.currency_service import (
 currency_bp = Blueprint("currency_bp", __name__)
 
 
+@currency_bp.route("/rates", methods=["GET"])
+@currency_bp.route("/api/rates", methods=["GET"])
+def get_rates():
+    """
+    Returns live or cached exchange rates relative to INR.
+    """
+    rates_to_inr, last_updated, source, is_cached = get_cached_exchange_rates()
+    return jsonify({
+        "base": "INR",
+        "rates": rates_to_inr,
+        "rates_to_inr": rates_to_inr,
+        "last_updated": last_updated.isoformat() if last_updated else None,
+        "source": source,
+        "is_cached": is_cached
+    })
+
+
 @currency_bp.route("/currencies", methods=["GET"])
 @token_required
 def get_currencies(current_user_id):

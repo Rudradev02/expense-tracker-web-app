@@ -38,7 +38,7 @@ const COLORS = {
 };
 
 function CustomChartTooltip({ active, payload, label }) {
-  const { formatCurrency } = useCurrency();
+  const { displayMoney } = useCurrency();
   if (!active || !payload?.length) return null;
 
   return (
@@ -83,7 +83,7 @@ function CustomChartTooltip({ active, payload, label }) {
                 className="tabular-nums"
                 style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}
               >
-                {formatCurrency(entry.value)}
+                {displayMoney(entry.value)}
                 {isProjected && (
                   <span className="text-[10px] ml-1 font-normal" style={{ color: "var(--accent)" }}>
                     (Forecast)
@@ -105,7 +105,7 @@ export default function ExpenseCharts({
   loading = false,
   onAddTransaction,
 }) {
-  const { formatCurrency, activeCurrencyInfo } = useCurrency();
+  const { displayMoney, activeCurrencyInfo, ratesToInr, baseCurrency } = useCurrency();
 
   if (loading) {
     return (
@@ -261,7 +261,7 @@ export default function ExpenseCharts({
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  {formatCurrency(totalExpense)}
+                  {displayMoney(totalExpense)}
                 </span>
               </>
             ) : (
@@ -276,7 +276,7 @@ export default function ExpenseCharts({
                   className="text-[10px] block mt-0.5"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  {formatCurrency(0)} expenses
+                  {displayMoney(0)} expenses
                 </span>
               </>
             )}
@@ -344,7 +344,12 @@ export default function ExpenseCharts({
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-                  tickFormatter={(val) => `${activeCurrencyInfo.symbol}${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
+                  tickFormatter={(val) => {
+                    // val is in INR from the backend; convert to display currency
+                    const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
+                    const converted = val / rateToInr;
+                    return `${activeCurrencyInfo.symbol}${converted >= 1000 ? (converted / 1000).toFixed(0) + "k" : Math.round(converted)}`;
+                  }}
                   dx={-5}
                 />
                 <LineTooltip content={<CustomChartTooltip />} />

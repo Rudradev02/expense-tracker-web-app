@@ -8,8 +8,8 @@ import EmptyState from "../components/EmptyState";
 
 export default function GoalsPage() {
   const { refreshKeys, triggerRefresh } = useAppRefresh();
-  const { formatCurrency } = useCurrency();
-  const formatINR = formatCurrency;
+  const { displayMoney } = useCurrency();
+  const formatINR = displayMoney;
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -406,7 +406,11 @@ export default function GoalsPage() {
                             : "var(--accent)",
                         }}
                       >
-                        {goal.monthly_saving_text || `Save ${formatCurrency(goal.required_monthly_saving)}/month`}
+                        {isCompleted
+                          ? "Goal accomplished"
+                          : daysLeft <= 0
+                          ? `Save ${displayMoney(goal.remaining)} (past due)`
+                          : `Save ${displayMoney(goal.required_monthly_saving)}/month`}
                       </span>
                     </div>
                   </div>

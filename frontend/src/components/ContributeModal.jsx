@@ -10,8 +10,8 @@ export default function ContributeModal({
   onSuccess = null,
 }) {
   const { triggerRefresh } = useAppRefresh();
-  const { formatCurrency, activeCurrencyInfo } = useCurrency();
-  const formatINR = formatCurrency;
+  const { formatCurrency, displayMoney, activeCurrencyInfo, baseCurrency, ratesToInr } = useCurrency();
+  const formatINR = displayMoney;
 
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -26,10 +26,16 @@ export default function ContributeModal({
 
   if (!isOpen || !goal) return null;
 
+  const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
   const targetAmount = Number(goal.target_amount || 0);
   const savedAmount = Number(goal.saved_amount || 0);
   const remaining = Math.max(0, targetAmount - savedAmount);
   const isAlreadyCompleted = savedAmount >= targetAmount;
+
+  const remainingInDisplay =
+    baseCurrency === "INR"
+      ? remaining
+      : Math.round((remaining / rateToInr) * 100) / 100;
 
   const handlePresetClick = (presetVal) => {
     setAmount(String(presetVal));
@@ -42,14 +48,17 @@ export default function ContributeModal({
 
     const num = parseFloat(amount);
     if (isNaN(num) || num <= 0) {
-      setError(`Please enter a contribution amount greater than ${formatCurrency(0)}.`);
+      setError(`Please enter a contribution amount greater than ${displayMoney(0)}.`);
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await contributeToGoal(goal.id, num);
-      const isCompleted = res.data?.is_completed || (savedAmount + num >= targetAmount);
+      const inrAmount =
+        baseCurrency === "INR" ? num : Math.round(num * rateToInr * 100) / 100;
+
+      const res = await contributeToGoal(goal.id, inrAmount);
+      const isCompleted = res.data?.is_completed || (savedAmount + inrAmount >= targetAmount);
 
       triggerRefresh("goals");
       triggerRefresh("dashboard");
@@ -196,33 +205,39 @@ export default function ContributeModal({
               Quick presets
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {[1000, 2500, 5000, 10000].map((val) => (
+              {[1000, 2500, 5000, 10000].map((val) => {
+                const displayVal =
+                  baseCurrency === "INR"
+                    ? val
+                    : Math.max(1, Math.round(val / rateToInr));
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => handlePresetClick(displayVal)}
+                    className="text-xs py-1 px-2.5 rounded cursor-pointer transition-colors"
+                    style={{
+                      backgroundColor: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-muted)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--text)";
+                      e.currentTarget.style.borderColor = "var(--accent)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--text-muted)";
+                      e.currentTarget.style.borderColor = "var(--border)";
+                    }}
+                  >
+                    +{formatINR(val)}
+                  </button>
+                );
+              })}
+              {remaining > 0 && (
                 <button
-                  key={val}
                   type="button"
-                  onClick={() => handlePresetClick(val)}
-                  className="text-xs py-1 px-2.5 rounded cursor-pointer transition-colors"
-                  style={{
-                    backgroundColor: "var(--surface-2)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-muted)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--text)";
-                    e.currentTarget.style.borderColor = "var(--accent)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--text-muted)";
-                    e.currentTarget.style.borderColor = "var(--border)";
-                  }}
-                >
-                  +{formatINR(val)}
-                </button>
-              ))}
-              {remaining > 0 && remaining !== 1000 && remaining !== 2500 && remaining !== 5000 && remaining !== 10000 && (
-                <button
-                  type="button"
-                  onClick={() => handlePresetClick(remaining)}
+                  onClick={() => handlePresetClick(remainingInDisplay)}
                   className="text-xs py-1 px-2.5 rounded cursor-pointer transition-colors"
                   style={{
                     backgroundColor: "rgba(212, 180, 131, 0.1)",

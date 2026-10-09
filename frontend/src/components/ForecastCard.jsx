@@ -7,8 +7,8 @@ export default function ForecastCard({
   error = null,
   onRetry,
 }) {
-  const { formatCurrency } = useCurrency();
-  const formatINR = (val) => formatCurrency(Math.round(Number(val || 0)));
+  const { displayMoney } = useCurrency();
+  const formatINR = (val) => displayMoney(Math.round(Number(val || 0)));
   const [showTooltip, setShowTooltip] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const tooltipRef = useRef(null);

@@ -72,14 +72,14 @@ export default function SummaryCard({
   hasPreviousData = false,
   loading = false,
 }) {
-  const { formatCurrency, baseCurrency } = useCurrency();
+  const { formatCurrency, displayMoney, baseCurrency } = useCurrency();
   const icon = icons[type] || icons.balance;
   const isNegative = type === "balance" && amount < 0;
   const animatedAmount = useAnimatedCounter(amount);
 
   const displayValue = isRawNumber
     ? animatedAmount.toLocaleString(baseCurrency === "INR" ? "en-IN" : "en-US")
-    : formatCurrency(animatedAmount);
+    : displayMoney(animatedAmount);
 
   // Helper for rendering trend indicator
   const renderTrendIndicator = () => {

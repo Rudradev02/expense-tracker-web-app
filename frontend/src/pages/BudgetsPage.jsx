@@ -7,8 +7,8 @@ import EmptyState from "../components/EmptyState";
 
 export default function BudgetsPage() {
   const { refreshKeys, triggerRefresh } = useAppRefresh();
-  const { formatCurrency } = useCurrency();
-  const formatINR = formatCurrency;
+  const { displayMoney } = useCurrency();
+  const formatINR = displayMoney;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

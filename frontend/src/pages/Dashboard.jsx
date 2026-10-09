@@ -135,7 +135,7 @@ function calculatePresetDates(preset, customStart, customEnd) {
 
 export default function Dashboard() {
   const { refreshKeys, triggerRefresh } = useAppRefresh();
-  const { formatCurrency, baseCurrency } = useCurrency();
+  const { formatCurrency, displayMoney, baseCurrency } = useCurrency();
   const [summary, setSummary] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -914,7 +914,7 @@ export default function Dashboard() {
                       >
                         <div>
                           <span>
-                            {isIncome ? "+" : "-"}{formatCurrency(tx.amount)}
+                            {isIncome ? "+" : "-"}{displayMoney(tx.amount)}
                           </span>
                           {tx.currency && tx.currency !== baseCurrency && (
                             <div className="text-[10px] opacity-75" style={{ color: "var(--text-muted)" }}>

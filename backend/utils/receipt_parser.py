@@ -5,8 +5,18 @@ import platform
 import subprocess
 import tempfile
 from datetime import datetime, date
-from PIL import Image, ImageEnhance, ImageFilter
-import pytesseract
+try:
+    from PIL import Image, ImageEnhance, ImageFilter
+except ImportError:
+    Image = None
+    ImageEnhance = None
+    ImageFilter = None
+
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
+
 from utils.category_keywords import CATEGORY_KEYWORD_RULES
 
 # Auto-detect Tesseract binary path
@@ -21,18 +31,25 @@ TESSERACT_CANDIDATE_PATHS = [
 ]
 
 TESSERACT_EXECUTABLE = None
-for p in TESSERACT_CANDIDATE_PATHS:
-    if p and os.path.exists(p):
-        TESSERACT_EXECUTABLE = p
-        pytesseract.pytesseract.tesseract_cmd = p
-        break
+if pytesseract is not None:
+    for p in TESSERACT_CANDIDATE_PATHS:
+        if p and os.path.exists(p):
+            TESSERACT_EXECUTABLE = p
+            try:
+                pytesseract.pytesseract.tesseract_cmd = p
+            except Exception:
+                pass
+            break
 
 WIN_OCR_SCRIPT = os.path.join(os.path.dirname(__file__), "win_ocr.ps1")
 
 
 def is_tesseract_available():
-    """Check if Tesseract binary is accessible on the host."""
-    return TESSERACT_EXECUTABLE is not None or shutil.which("tesseract") is not None
+    """Check if Tesseract binary and python library are accessible on the host."""
+    return (
+        pytesseract is not None
+        and (TESSERACT_EXECUTABLE is not None or shutil.which("tesseract") is not None)
+    )
 
 
 def is_windows_ocr_available():
@@ -334,6 +351,15 @@ def parse_receipt_image(file_storage):
     Does not save the image to disk or database.
     """
     # 1. Open image from stream with Pillow
+    if Image is None:
+        return {
+            "success": False,
+            "error": "Image processing library (Pillow) is not installed on this host.",
+            "friendly_message": "Image processing is unavailable on this host. You can enter transaction details manually or scan with browser OCR.",
+            "tesseract_missing": True,
+            "fallback_to_manual": True,
+        }
+
     try:
         image = Image.open(file_storage.stream)
     except Exception as e:

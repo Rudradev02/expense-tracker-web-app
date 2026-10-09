@@ -113,9 +113,13 @@ export function CurrencyProvider({ children }) {
       };
 
       const num = Number(amount) || 0;
+      const hasDecimals = Math.abs(num % 1) > 0.001;
+      const defaultMaxDigits = hasDecimals ? 2 : 0;
+      const defaultMinDigits = hasDecimals && targetCode !== "INR" ? 2 : 0;
+
       const {
-        maximumFractionDigits = 0,
-        minimumFractionDigits = 0,
+        maximumFractionDigits = defaultMaxDigits,
+        minimumFractionDigits = defaultMinDigits,
         showSymbol = true,
       } = options;
 
@@ -231,6 +235,30 @@ export function CurrencyProvider({ children }) {
     }
   };
 
+  /**
+   * Display a monetary amount stored in INR, converted to the user's active
+   * display currency and formatted with the correct symbol / locale.
+   *
+   * Use this for ALL backend amounts (which are always in INR).
+   * Use plain `formatCurrency` only when you already hold a value in the
+   * target currency (e.g. a user-typed input).
+   */
+  const displayMoney = useCallback(
+    (inrAmount, options = {}) => {
+      const num = Number(inrAmount) || 0;
+      const target = baseCurrency || "INR";
+
+      // Convert INR → target currency
+      // ratesToInr stores "1 unit of X = Y INR", so:
+      //   converted = inrAmount / ratesToInr[target]
+      const rateToInr = Number(ratesToInr[target]) || 1.0;
+      const converted = num / rateToInr;
+
+      return formatCurrency(converted, target, options);
+    },
+    [baseCurrency, ratesToInr, formatCurrency]
+  );
+
   const value = {
     baseCurrency,
     currencies,
@@ -241,6 +269,7 @@ export function CurrencyProvider({ children }) {
     loading,
     error,
     formatCurrency,
+    displayMoney,
     convertAmount,
     getExchangeRate,
     changeBaseCurrency,

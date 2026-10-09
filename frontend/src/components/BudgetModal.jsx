@@ -12,7 +12,7 @@ export default function BudgetModal({
 }) {
   const { categories } = useCategories();
   const { triggerRefresh } = useAppRefresh();
-  const { activeCurrencyInfo } = useCurrency();
+  const { activeCurrencyInfo, baseCurrency, ratesToInr } = useCurrency();
 
   const [category, setCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
@@ -23,21 +23,26 @@ export default function BudgetModal({
   const isEditing = Boolean(initialBudget && initialBudget.budget_id);
 
   useEffect(() => {
+    const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
     if (initialBudget) {
       setCategory(initialBudget.category || "");
       setCustomCategory("");
-      setMonthlyLimit(
-        initialBudget.monthly_limit !== null && initialBudget.monthly_limit !== undefined
-          ? String(initialBudget.monthly_limit)
-          : ""
-      );
+      if (initialBudget.monthly_limit !== null && initialBudget.monthly_limit !== undefined) {
+        const converted =
+          baseCurrency === "INR"
+            ? initialBudget.monthly_limit
+            : Math.round((Number(initialBudget.monthly_limit) / rateToInr) * 100) / 100;
+        setMonthlyLimit(String(converted));
+      } else {
+        setMonthlyLimit("");
+      }
     } else {
       setCategory(categories.length > 0 ? categories[0].name : "");
       setCustomCategory("");
       setMonthlyLimit("");
     }
     setError("");
-  }, [initialBudget, categories, isOpen]);
+  }, [initialBudget, categories, isOpen, baseCurrency, ratesToInr]);
 
   if (!isOpen) return null;
 
@@ -62,13 +67,17 @@ export default function BudgetModal({
 
     setSubmitting(true);
     try {
+      const rateToInr = Number(ratesToInr[baseCurrency]) || 1.0;
+      const inrLimit =
+        baseCurrency === "INR" ? limitNum : Math.round(limitNum * rateToInr);
+
       if (isEditing) {
         await updateBudget(initialBudget.budget_id, {
           category: targetCategory,
-          monthly_limit: limitNum,
+          monthly_limit: inrLimit,
         });
       } else {
-        await createBudget(targetCategory, limitNum);
+        await createBudget(targetCategory, inrLimit);
       }
 
       triggerRefresh("budgets");

@@ -206,6 +206,7 @@ export const deleteGoal = (id) => API.delete(`/goals/${id}`);
 export const contributeToGoal = (id, amount) => API.post(`/goals/${id}/contribute`, { amount });
 
 export const getCurrencies = () => API.get("/currencies");
+export const getRates = () => API.get("/rates");
 export const setBaseCurrency = (base_currency) => API.put("/currencies/base", { base_currency });
 export const updateExchangeRates = (rates) => API.post("/currencies/rates", { rates });
 export const refreshExchangeRates = () => API.post("/currencies/refresh");
