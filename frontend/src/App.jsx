@@ -6,8 +6,7 @@ import CategoriesPage from "./pages/CategoriesPage";
 import BudgetsPage from "./pages/BudgetsPage";
 import RecurringPage from "./pages/RecurringPage";
 import GoalsPage from "./pages/GoalsPage";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import AuthPage from "./pages/AuthPage";
 import { CategoriesProvider } from "./context/CategoriesContext";
 import { AppRefreshProvider } from "./context/AppRefreshContext";
 import { DarkModeProvider } from "./context/DarkModeContext";
@@ -34,8 +33,8 @@ function App() {
         <CategoriesProvider>
           <CurrencyProvider>
             <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/register" element={<AuthPage />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/dashboard"

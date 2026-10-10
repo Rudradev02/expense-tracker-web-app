@@ -328,25 +328,41 @@ export default function BrandPanel({ mode = "login" }) {
 
         {/* Masked Headline and Subtitle Reveal */}
         <div className="mt-8 text-center max-w-md w-full px-2">
-          <div className="overflow-hidden py-1">
+          <div className="brand-masked-text-container py-1 min-h-[40px] sm:min-h-[48px]">
             <h2
-              key={`title-${mode}`}
-              className="text-2xl sm:text-3xl font-normal font-serif tracking-tight m-0 animate-text-reveal"
+              className={`text-2xl sm:text-3xl font-normal font-serif tracking-tight m-0 brand-masked-line ${
+                !isRegister ? "active" : ""
+              }`}
               style={{ fontFamily: "var(--font-serif)", color: "var(--text)" }}
             >
-              {isRegister ? "Build Your Sovereign Wealth Archive." : "Master Your Capital with Composure."}
+              Master Your Capital with Composure.
+            </h2>
+            <h2
+              className={`text-2xl sm:text-3xl font-normal font-serif tracking-tight m-0 brand-masked-line ${
+                isRegister ? "active" : ""
+              }`}
+              style={{ fontFamily: "var(--font-serif)", color: "var(--text)" }}
+            >
+              Build Your Sovereign Wealth Archive.
             </h2>
           </div>
 
-          <div className="overflow-hidden mt-2">
+          <div className="brand-masked-text-container mt-2 min-h-[44px]">
             <p
-              key={`sub-${mode}`}
-              className="text-xs sm:text-sm m-0 leading-relaxed animate-text-reveal"
+              className={`text-xs sm:text-sm m-0 leading-relaxed brand-masked-line ${
+                !isRegister ? "active" : ""
+              }`}
               style={{ color: "var(--text-muted)" }}
             >
-              {isRegister
-                ? "Initiate discreet accounting, persistent taxonomy, and cashflow intelligence."
-                : "Discreet tracking, category breakdowns, and analytics modeled after private banking."}
+              Discreet tracking, category breakdowns, and analytics modeled after private banking.
+            </p>
+            <p
+              className={`text-xs sm:text-sm m-0 leading-relaxed brand-masked-line ${
+                isRegister ? "active" : ""
+              }`}
+              style={{ color: "var(--text-muted)" }}
+            >
+              Initiate discreet accounting, persistent taxonomy, and cashflow intelligence.
             </p>
           </div>
         </div>

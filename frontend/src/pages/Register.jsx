@@ -1,5 +1,3 @@
-import AuthExperience from "../components/auth/AuthExperience";
+import AuthPage from "./AuthPage";
 
-export default function Register() {
-  return <AuthExperience initialMode="register" />;
-}
+export default AuthPage;
