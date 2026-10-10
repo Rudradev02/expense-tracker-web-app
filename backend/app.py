@@ -13,6 +13,7 @@ from routes.goal_routes import goal_bp
 from routes.currency_routes import currency_bp
 from utils.recurring_processor import process_due_recurring_rules, start_recurring_scheduler
 import os
+import re
 
 # Load environment variables
 load_dotenv()
@@ -20,24 +21,29 @@ load_dotenv()
 # Create Flask app
 app = Flask(__name__)
 
-# Configure CORS with support for production FRONTEND_URL
+# Configure CORS with support for production FRONTEND_URL and Vercel deployments
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://expense-tracker-web-app-gamma.vercel.app",
+    re.compile(r"^https://[a-zA-Z0-9\-_.]+\.vercel\.app$"),
+]
 frontend_url = (os.environ.get("FRONTEND_URL") or "").strip()
 if frontend_url and frontend_url != "*":
-    origins_set = set()
     for origin in frontend_url.split(","):
         clean_origin = origin.strip().rstrip("/")
-        if clean_origin:
-            origins_set.add(clean_origin)
-            origins_set.add(f"{clean_origin}/")
-    CORS(
-        app,
-        supports_credentials=True,
-        origins=list(origins_set),
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
-    )
-else:
-    CORS(app, supports_credentials=True)
+        if clean_origin and clean_origin not in allowed_origins:
+            allowed_origins.append(clean_origin)
+
+CORS(
+    app,
+    supports_credentials=True,
+    origins=allowed_origins,
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+)
 
 # Database configuration (Neon/Render/Railway URL normalization)
 raw_db_url = os.environ.get("DATABASE_URL", "sqlite:///database.db")

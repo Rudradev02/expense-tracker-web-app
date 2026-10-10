@@ -9,6 +9,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [coldStartNotice, setColdStartNotice] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -33,6 +34,11 @@ export default function Register() {
     }
 
     setSubmitting(true);
+    setColdStartNotice(false);
+
+    const timer = setTimeout(() => {
+      setColdStartNotice(true);
+    }, 4500);
 
     try {
       const res = await registerUser(username, email, password);
@@ -49,7 +55,9 @@ export default function Register() {
         "Registration failed. Email or username might already be in use.";
       setError(msg);
     } finally {
+      clearTimeout(timer);
       setSubmitting(false);
+      setColdStartNotice(false);
     }
   };
 
@@ -245,6 +253,23 @@ export default function Register() {
             >
               {submitting ? "Creating Workspace..." : "Create Account"}
             </button>
+
+            {coldStartNotice && submitting && (
+              <div
+                className="p-3 rounded-lg text-xs flex items-center gap-2 mt-2"
+                style={{
+                  backgroundColor: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full animate-ping shrink-0"
+                  style={{ backgroundColor: "var(--accent)" }}
+                />
+                <span>Waking up free Render server... Cold start may take up to 50 seconds.</span>
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center text-xs" style={{ color: "var(--text-muted)" }}>

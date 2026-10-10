@@ -1,10 +1,21 @@
 import axios from "axios";
 
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+// Default to deployed Render backend in production if VITE_API_URL wasn't provided at build time
+const defaultProdBackendUrl = "https://expense-tracker-web-app-1zou.onrender.com";
+const isLocalhost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  (!isLocalhost && typeof window !== "undefined" ? defaultProdBackendUrl : "")
+).replace(/\/+$/, "");
 
 const API = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  timeout: 90000, // 90s to comfortably tolerate Render free-tier cold starts
 });
 
 // Attach access token automatically
@@ -79,7 +90,7 @@ API.interceptors.response.use(
 );
 
 export const loginUser = async (email, password) => {
-  const response = await API.post("/api/login", { email, password });
+  const response = await API.post("/login", { email, password });
   const token = response.data.token;
   localStorage.setItem("token", token);
   if (response.data.username) {
@@ -90,7 +101,7 @@ export const loginUser = async (email, password) => {
 };
 
 export const registerUser = async (username, email, password) => {
-  const response = await API.post("/api/register", { username, email, password });
+  const response = await API.post("/register", { username, email, password });
   if (response.data.token) {
     localStorage.setItem("token", response.data.token);
     if (response.data.username) {
@@ -103,7 +114,7 @@ export const registerUser = async (username, email, password) => {
 
 export const logoutUser = async () => {
   try {
-    await API.post("/api/logout");
+    await API.post("/logout");
   } catch (err) {
     console.warn("Logout error:", err);
   } finally {
@@ -113,7 +124,7 @@ export const logoutUser = async () => {
   }
 };
 
-export const getCurrentUser = () => API.get("/api/me");
+export const getCurrentUser = () => API.get("/me");
 
 export const getSummary = (params = {}) => API.get("/summary", { params });
 

@@ -7,6 +7,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [coldStartNotice, setColdStartNotice] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -14,6 +15,11 @@ export default function Login() {
     e.preventDefault();
     setSubmitting(true);
     setError("");
+    setColdStartNotice(false);
+
+    const timer = setTimeout(() => {
+      setColdStartNotice(true);
+    }, 4500);
 
     try {
       const res = await loginUser(email, password);
@@ -28,7 +34,9 @@ export default function Login() {
         "Invalid email/username or password";
       setError(msg);
     } finally {
+      clearTimeout(timer);
       setSubmitting(false);
+      setColdStartNotice(false);
     }
   };
 
@@ -179,6 +187,23 @@ export default function Login() {
             >
               {submitting ? "Signing in..." : "Sign In"}
             </button>
+
+            {coldStartNotice && submitting && (
+              <div
+                className="p-3 rounded-lg text-xs flex items-center gap-2 mt-2"
+                style={{
+                  backgroundColor: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full animate-ping shrink-0"
+                  style={{ backgroundColor: "var(--accent)" }}
+                />
+                <span>Waking up free Render server... Cold start may take up to 50 seconds.</span>
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center text-xs" style={{ color: "var(--text-muted)" }}>

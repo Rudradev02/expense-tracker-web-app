@@ -46,6 +46,7 @@ def get_client_ip():
 # REGISTER
 # ─────────────────────────────────────────────────────────────
 @auth_bp.route("/register", methods=["POST"])
+@auth_bp.route("/api/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
 
@@ -140,6 +141,7 @@ def register():
 # LOGIN
 # ─────────────────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/api/login", methods=["POST"])
 def login():
     client_ip = get_client_ip()
     data = request.get_json() or {}
@@ -277,6 +279,7 @@ def refresh():
 # LOGOUT
 # ─────────────────────────────────────────────────────────────
 @auth_bp.route("/logout", methods=["POST"])
+@auth_bp.route("/api/logout", methods=["POST"])
 def logout():
     response = make_response(jsonify({
         "message": "Logged out successfully"
@@ -289,6 +292,7 @@ def logout():
 # CURRENT USER PROFILE (/me)
 # ─────────────────────────────────────────────────────────────
 @auth_bp.route("/me", methods=["GET"])
+@auth_bp.route("/api/me", methods=["GET"])
 @token_required
 def get_current_user_profile(current_user_id):
     user = db.session.get(User, current_user_id)
