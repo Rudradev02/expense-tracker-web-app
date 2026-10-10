@@ -1143,9 +1143,6 @@ body {
   flex: 0 0 55%;
   width: 55%;
   height: 100%;
-  transform: translateX(0);
-  transition: transform 650ms cubic-bezier(0.65, 0, 0.35, 1);
-  will-change: transform;
   z-index: 10;
 }
 
@@ -1153,24 +1150,12 @@ body {
   flex: 0 0 45%;
   width: 45%;
   height: 100%;
-  transform: translateX(0);
-  transition: transform 650ms cubic-bezier(0.65, 0, 0.35, 1);
-  will-change: transform;
   z-index: 20;
   overflow-y: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--bg);
-}
-
-/* 650ms Physical Swap when data-mode="register" */
-.auth-shell[data-mode="register"] .auth-brand-column {
-  transform: translateX(45vw);
-}
-
-.auth-shell[data-mode="register"] .auth-form-column {
-  transform: translateX(-55vw);
 }
 
 /* Mobile Responsiveness under 900px */
@@ -1186,60 +1171,79 @@ body {
   .auth-form-column {
     flex: 1 1 100%;
     width: 100% !important;
-    transform: none !important;
     padding: 32px 16px;
   }
-  .auth-shell[data-mode="register"] .auth-form-column {
-    transform: none !important;
-  }
 }
 
-/* Dual Forms Stage: Both Forms Stay Mounted */
-.auth-forms-stage {
-  position: relative;
+/* ─────────────────────────────────────────────────────────────
+   3D Flip Card Form System (Layout in place, Form Flips 180deg)
+   ───────────────────────────────────────────────────────────── */
+.auth-flip-viewport {
+  perspective: 1400px;
   width: 100%;
   max-width: 400px;
-  min-height: 480px;
+  min-height: 580px;
+  position: relative;
+  margin: 0 auto;
 }
 
-.auth-form-panel {
+.auth-flip-card {
+  width: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 650ms cubic-bezier(0.34, 1.25, 0.64, 1);
+  will-change: transform;
+}
+
+.auth-flip-card[data-mode="register"] {
+  transform: rotateY(180deg);
+}
+
+/* Front & Back Faces */
+.auth-card-face {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(20px);
-  transition: opacity 250ms ease, transform 250ms ease, visibility 0s 250ms;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transform-style: preserve-3d;
 }
 
-.auth-form-panel.active {
-  opacity: 1;
-  visibility: visible;
+.auth-card-front {
+  transform: rotateY(0deg);
+  z-index: 2;
+}
+
+.auth-card-back {
+  transform: rotateY(180deg);
+  z-index: 1;
+}
+
+/* Active face interactions & smooth fade */
+.auth-flip-card[data-mode="login"] .auth-card-front {
   pointer-events: auto;
-  transform: translateY(0);
-  transition: opacity 400ms ease 120ms, transform 400ms cubic-bezier(0.16, 1, 0.3, 1) 120ms;
+  opacity: 1;
+  transition: opacity 400ms ease 100ms;
+}
+.auth-flip-card[data-mode="login"] .auth-card-back {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
 }
 
-/* 40ms Stagger for Children in Active Form */
-.auth-form-panel.active .auth-stagger-item:nth-child(1) {
-  transition-delay: 140ms;
+.auth-flip-card[data-mode="register"] .auth-card-front {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
 }
-.auth-form-panel.active .auth-stagger-item:nth-child(2) {
-  transition-delay: 180ms;
-}
-.auth-form-panel.active .auth-stagger-item:nth-child(3) {
-  transition-delay: 220ms;
-}
-.auth-form-panel.active .auth-stagger-item:nth-child(4) {
-  transition-delay: 260ms;
-}
-.auth-form-panel.active .auth-stagger-item:nth-child(5) {
-  transition-delay: 300ms;
-}
-.auth-form-panel.active .auth-stagger-item:nth-child(6) {
-  transition-delay: 340ms;
+.auth-flip-card[data-mode="register"] .auth-card-back {
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 400ms ease 100ms;
 }
 
 /* Masked Text Reveal inside Brand Panel */

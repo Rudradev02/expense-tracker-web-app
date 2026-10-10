@@ -235,16 +235,17 @@ export default function AuthForm({
         />
       )}
 
-      {/* Dual Forms Stage: Both Forms Stay Mounted */}
-      <div className="auth-forms-stage">
-        {/* ─────────────────────────────────────────────────────────────
-           LOGIN FORM PANEL
-           ───────────────────────────────────────────────────────────── */}
-        <div
-          className={`auth-form-panel ${isLoginActive ? "active" : ""}`}
-          inert={!isLoginActive ? "" : undefined}
-          aria-hidden={!isLoginActive}
-        >
+      {/* 3D Flip Card Viewport */}
+      <div className="auth-flip-viewport">
+        <div className="auth-flip-card" data-mode={mode}>
+          {/* ─────────────────────────────────────────────────────────────
+             FRONT FACE: LOGIN FORM
+             ───────────────────────────────────────────────────────────── */}
+          <div
+            className="auth-card-face auth-card-front"
+            inert={!isLoginActive ? "" : undefined}
+            aria-hidden={!isLoginActive}
+          >
           {/* Header */}
           <div className="auth-stagger-item mb-6">
             <span className="section-label" style={{ color: "var(--text-muted)", fontSize: "11px" }}>
@@ -411,10 +412,10 @@ export default function AuthForm({
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-           REGISTER FORM PANEL
+           BACK FACE: REGISTER FORM
            ───────────────────────────────────────────────────────────── */}
         <div
-          className={`auth-form-panel ${isRegisterActive ? "active" : ""}`}
+          className="auth-card-face auth-card-back"
           inert={!isRegisterActive ? "" : undefined}
           aria-hidden={!isRegisterActive}
         >
@@ -652,5 +653,6 @@ export default function AuthForm({
         </div>
       </div>
     </div>
+  </div>
   );
 }
