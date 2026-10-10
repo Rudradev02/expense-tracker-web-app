@@ -60,18 +60,20 @@ This guide outlines how to deploy the **Expense Tracker** application to product
 #### 2. Create Backend Web Service
 1. On Render, click **New +** -> **Web Service**.
 2. Connect your GitHub repository.
-3. Settings:
+3. Configure the following fields (**Important**):
    - **Name**: `expense-tracker-api`
-   - **Root Directory**: `backend`
+   - **Root Directory**: `backend` *(Do not leave blank)*
    - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
+   - **Build Command**: `pip install -r requirements.txt` *(Replace Render's default `uv sync` command)*
    - **Start Command**: `gunicorn app:app`
    - **Plan**: `Free`
 4. In **Environment Variables**, add:
+   - `PYTHON_VERSION`: `3.11.9` *(Ensures stable Python instead of 3.14)*
    - `DATABASE_URL`: *(Paste your PostgreSQL URL from step 1)*
    - `SECRET_KEY`: *(Enter a secure random string, e.g. run `openssl rand -hex 32`)*
    - `FLASK_ENV`: `production`
-5. Click **Deploy Web Service**.
+   - `FRONTEND_URL`: `*` *(or your Vercel URL once deployed)*
+5. Click **Create Web Service** (or **Save Changes** in Settings if already created).
 6. When deployment finishes, visit `https://<your-backend-service>.onrender.com/` in your browser. You should see:
    ```json
    {
