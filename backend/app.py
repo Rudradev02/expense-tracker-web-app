@@ -21,10 +21,21 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure CORS with support for production FRONTEND_URL
-frontend_url = os.environ.get("FRONTEND_URL", "")
-if frontend_url and frontend_url.strip() != "*":
-    allowed_origins = [u.strip() for u in frontend_url.split(",") if u.strip()]
-    CORS(app, supports_credentials=True, origins=allowed_origins)
+frontend_url = (os.environ.get("FRONTEND_URL") or "").strip()
+if frontend_url and frontend_url != "*":
+    origins_set = set()
+    for origin in frontend_url.split(","):
+        clean_origin = origin.strip().rstrip("/")
+        if clean_origin:
+            origins_set.add(clean_origin)
+            origins_set.add(f"{clean_origin}/")
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=list(origins_set),
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+    )
 else:
     CORS(app, supports_credentials=True)
 
@@ -93,7 +104,8 @@ def home():
     }
 
 
-# Run app locally
+# Run app
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host="127.0.0.1", port=port)
+    is_debug = os.environ.get("FLASK_ENV") != "production"
+    app.run(debug=is_debug, host="0.0.0.0", port=port)
