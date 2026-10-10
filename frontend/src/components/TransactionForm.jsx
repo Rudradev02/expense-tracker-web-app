@@ -646,31 +646,34 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="tx-form-amount" className="form-label mb-0">
-                Amount ({((currencies || []).find((c) => c.code === currencyCode))?.symbol || "₹"})
-              </label>
-              {lowConfidenceFields.includes("amount") && (
-                <span
-                  className="text-[10px] font-medium px-1.5 py-0.2 rounded"
-                  style={{
-                    backgroundColor: "rgba(212, 180, 131, 0.12)",
-                    border: "1px solid rgba(212, 180, 131, 0.3)",
-                    color: "var(--accent)",
-                  }}
-                >
-                  Verify
-                </span>
-              )}
-            </div>
+        {/* Dedicated Amount Section */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="tx-form-amount" className="form-label mb-0">
+              Amount ({((currencies || []).find((c) => c.code === currencyCode))?.symbol || "₹"})
+            </label>
+            {lowConfidenceFields.includes("amount") && (
+              <span
+                className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                style={{
+                  backgroundColor: "rgba(212, 180, 131, 0.12)",
+                  border: "1px solid rgba(212, 180, 131, 0.3)",
+                  color: "var(--accent)",
+                }}
+              >
+                Verify
+              </span>
+            )}
+          </div>
 
-            <div className="flex gap-1.5">
+          <div className="flex items-center gap-2">
+            {/* Currency selector - fixed compact width */}
+            <div className="shrink-0" style={{ width: "100px" }}>
               <select
                 id="tx-form-currency"
-                className="input-field text-xs font-semibold py-1.5 px-2 w-[82px] shrink-0 cursor-pointer"
+                className="input-field text-xs font-semibold py-2.5 px-2.5 cursor-pointer"
                 style={{
+                  width: "100%",
                   backgroundColor: "var(--surface)",
                   borderColor: "var(--border)",
                   color: "var(--text)",
@@ -687,15 +690,19 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
                   </option>
                 ))}
               </select>
+            </div>
 
+            {/* Numeric Amount Input - prominent, flex-1 */}
+            <div className="relative flex-1 min-w-0">
               <input
                 id="tx-form-amount"
                 type="number"
                 placeholder="0.00"
                 min="0.01"
                 step="0.01"
-                className="input-field tabular-nums flex-1"
+                className="input-field tabular-nums text-sm font-medium py-2.5"
                 style={{
+                  width: "100%",
                   borderColor: lowConfidenceFields.includes("amount")
                     ? "var(--accent)"
                     : undefined,
@@ -708,64 +715,67 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
                 required
               />
             </div>
-
-            {currencyCode !== baseCurrency && (
-              <div className="mt-1 space-y-1">
-                <div
-                  className="flex items-center justify-between text-[11px]"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  <span className="truncate">
-                    ≈{" "}
-                    {formatCurrency(
-                      (Number(amount) || 0) *
-                        (customRate && Number(customRate) > 0
-                          ? Number(customRate)
-                          : getExchangeRate(currencyCode, baseCurrency))
-                    )}{" "}
-                    <span className="opacity-75">
-                      (1 {currencyCode} ={" "}
-                      {Number(
-                        customRate && Number(customRate) > 0
-                          ? Number(customRate)
-                          : getExchangeRate(currencyCode, baseCurrency)
-                      ).toFixed(2)}{" "}
-                      {baseCurrency})
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowRateInput(!showRateInput)}
-                    className="text-[10px] underline ml-1 shrink-0 cursor-pointer"
-                    style={{ color: "var(--accent)" }}
-                  >
-                    {showRateInput ? "Auto" : "Rate"}
-                  </button>
-                </div>
-
-                {showRateInput && (
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>
-                      1 {currencyCode} =
-                    </span>
-                    <input
-                      type="number"
-                      step="0.0001"
-                      min="0.0001"
-                      placeholder={String(getExchangeRate(currencyCode, baseCurrency))}
-                      value={customRate}
-                      onChange={(e) => setCustomRate(e.target.value)}
-                      className="input-field tabular-nums text-[11px] py-0.5 px-2 flex-1"
-                    />
-                    <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      {baseCurrency}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
+          {currencyCode !== baseCurrency && (
+            <div className="mt-1.5 space-y-1">
+              <div
+                className="flex items-center justify-between text-[11px]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <span className="truncate">
+                  ≈{" "}
+                  {formatCurrency(
+                    (Number(amount) || 0) *
+                      (customRate && Number(customRate) > 0
+                        ? Number(customRate)
+                        : getExchangeRate(currencyCode, baseCurrency))
+                  )}{" "}
+                  <span className="opacity-75">
+                    (1 {currencyCode} ={" "}
+                    {Number(
+                      customRate && Number(customRate) > 0
+                        ? Number(customRate)
+                        : getExchangeRate(currencyCode, baseCurrency)
+                    ).toFixed(2)}{" "}
+                    {baseCurrency})
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowRateInput(!showRateInput)}
+                  className="text-[10px] underline ml-1 shrink-0 cursor-pointer"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {showRateInput ? "Auto" : "Rate"}
+                </button>
+              </div>
+
+              {showRateInput && (
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>
+                    1 {currencyCode} =
+                  </span>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0.0001"
+                    placeholder={String(getExchangeRate(currencyCode, baseCurrency))}
+                    value={customRate}
+                    onChange={(e) => setCustomRate(e.target.value)}
+                    className="input-field tabular-nums text-[11px] py-1 px-2 flex-1"
+                  />
+                  <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    {baseCurrency}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Date and Type Fields - 2 Columns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <div className="flex items-center justify-between mb-1">
               <label htmlFor="tx-form-date" className="form-label mb-0">
@@ -787,7 +797,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
             <input
               id="tx-form-date"
               type="date"
-              className="input-field"
+              className="input-field py-2.5"
               style={{
                 borderColor: lowConfidenceFields.includes("date")
                   ? "var(--accent)"
@@ -808,7 +818,7 @@ export default function TransactionForm({ transaction = null, onSuccess, onCance
             </label>
             <select
               id="tx-form-type"
-              className="input-field"
+              className="input-field py-2.5"
               value={type}
               onChange={(e) => setType(e.target.value)}
             >

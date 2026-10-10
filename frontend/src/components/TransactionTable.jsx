@@ -312,6 +312,8 @@ export default function TransactionTable({
               backgroundColor: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: "14px",
+              maxHeight: "min(90vh, 820px)",
+              overflowY: "auto",
             }}
             onClick={(e) => e.stopPropagation()}
           >
