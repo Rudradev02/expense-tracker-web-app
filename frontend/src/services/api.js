@@ -1,7 +1,9 @@
 import axios from "axios";
 
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+
 const API = axios.create({
-  baseURL: "",
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
@@ -40,7 +42,8 @@ API.interceptors.response.use(
     if (status === 401 && !isAuthRoute && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshResponse = await axios.post("/api/refresh", {}, { withCredentials: true });
+        const refreshUrl = API_BASE_URL ? `${API_BASE_URL}/refresh` : "/refresh";
+        const refreshResponse = await axios.post(refreshUrl, {}, { withCredentials: true });
         const newToken = refreshResponse.data?.token;
 
         if (newToken) {

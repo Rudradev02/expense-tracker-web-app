@@ -19,13 +19,21 @@ load_dotenv()
 
 # Create Flask app
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
 
-# Database configuration
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-    "DATABASE_URL",
-    "sqlite:///database.db"
-)
+# Configure CORS with support for production FRONTEND_URL
+frontend_url = os.environ.get("FRONTEND_URL", "")
+if frontend_url and frontend_url.strip() != "*":
+    allowed_origins = [u.strip() for u in frontend_url.split(",") if u.strip()]
+    CORS(app, supports_credentials=True, origins=allowed_origins)
+else:
+    CORS(app, supports_credentials=True)
+
+# Database configuration (Neon/Render/Railway URL normalization)
+raw_db_url = os.environ.get("DATABASE_URL", "sqlite:///database.db")
+if raw_db_url and raw_db_url.startswith("postgres://"):
+    raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = raw_db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Reconnect stale Neon/PostgreSQL SSL connections automatically
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {

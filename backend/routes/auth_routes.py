@@ -214,6 +214,7 @@ def login():
 # REFRESH TOKEN
 # ─────────────────────────────────────────────────────────────
 @auth_bp.route("/refresh", methods=["POST"])
+@auth_bp.route("/api/refresh", methods=["POST"])
 def refresh():
     # Extract refresh token from httpOnly cookie, JSON body, or Authorization header
     token = request.cookies.get("refresh_token")
