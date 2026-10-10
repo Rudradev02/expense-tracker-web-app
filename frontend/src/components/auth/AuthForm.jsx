@@ -191,72 +191,21 @@ export default function AuthForm({
         />
       )}
 
-      {/* Segmented Control Pill Header */}
-      <div
-        className="auth-stagger-item mb-8 p-1 rounded-xl flex items-center relative"
-        style={{
-          backgroundColor: "var(--surface-2)",
-          border: "1px solid var(--border)",
-          animationDelay: "40ms",
-        }}
-        role="tablist"
-        aria-label="Authentication mode"
-      >
-        {/* Sliding Pill Indicator */}
-        <div
-          className="absolute top-1 bottom-1 rounded-lg transition-transform duration-300 ease-out"
-          style={{
-            width: "calc(50% - 4px)",
-            backgroundColor: "var(--surface)",
-            border: "1px solid var(--border)",
-            transform: isRegister ? "translateX(calc(100% + 4px))" : "translateX(0)",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-          }}
-          aria-hidden="true"
-        />
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={!isRegister}
-          onClick={() => onSwitchMode("login")}
-          className="relative z-10 flex-1 py-2 text-xs font-semibold text-center rounded-lg transition-colors duration-200 cursor-pointer"
-          style={{
-            color: !isRegister ? "var(--text)" : "var(--text-muted)",
-          }}
-        >
-          Sign In
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={isRegister}
-          onClick={() => onSwitchMode("register")}
-          className="relative z-10 flex-1 py-2 text-xs font-semibold text-center rounded-lg transition-colors duration-200 cursor-pointer"
-          style={{
-            color: isRegister ? "var(--text)" : "var(--text-muted)",
-          }}
-        >
-          Create Account
-        </button>
-      </div>
-
       {/* Form Header */}
-      <div className="auth-stagger-item mb-6" style={{ animationDelay: "90ms" }}>
+      <div className="auth-stagger-item mb-6" style={{ animationDelay: "60ms" }}>
         <span className="section-label" style={{ color: "var(--text-muted)", fontSize: "11px" }}>
-          {isRegister ? "New Credential" : "Authentication"}
+          {isRegister ? "Registration" : "Authentication"}
         </span>
         <h1
           className="text-2xl sm:text-3xl font-normal font-serif tracking-tight m-0 mt-1"
           style={{ fontFamily: "var(--font-serif)", color: "var(--text)" }}
         >
-          {isRegister ? "Initialize Ledger" : "Access Workspace"}
+          {isRegister ? "Create Account" : "Sign In"}
         </h1>
         <p className="text-xs sm:text-sm m-0 mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
           {isRegister
-            ? "Enter your credentials to create your personal financial archive."
-            : "Enter your account credentials to access your live intelligence dashboard."}
+            ? "Enter your credentials to create your personal financial account."
+            : "Enter your account credentials to access your intelligence dashboard."}
         </p>
       </div>
 
@@ -453,10 +402,10 @@ export default function AuthForm({
               // Submitting Spinner Pill
               <span className="flex items-center gap-2.5">
                 <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                <span>{isRegister ? "Creating Archive..." : "Authenticating..."}</span>
+                <span>{isRegister ? "Creating Account..." : "Signing in..."}</span>
               </span>
             ) : (
-              <span>{isRegister ? "Create Sovereign Archive" : "Sign In to Workspace"}</span>
+              <span>{isRegister ? "Create Account" : "Sign In"}</span>
             )}
           </button>
         </div>
@@ -488,14 +437,14 @@ export default function AuthForm({
           animationDelay: isRegister ? "360ms" : "280ms",
         }}
       >
-        <span>{isRegister ? "Already hold an archive?" : "Don't hold an archive?"} </span>
+        <span>{isRegister ? "Already have an account?" : "Don't have an account?"} </span>
         <button
           type="button"
           onClick={() => onSwitchMode(isRegister ? "login" : "register")}
           className="font-semibold underline underline-offset-4 cursor-pointer hover:opacity-85 transition-opacity"
           style={{ color: "var(--accent)", background: "transparent", border: "none", padding: 0 }}
         >
-          {isRegister ? "Sign in here" : "Create one now"}
+          {isRegister ? "Sign In" : "Create Account"}
         </button>
       </div>
     </div>
